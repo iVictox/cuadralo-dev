@@ -1,0 +1,36 @@
+.tmp.drivedownload/
+.tmp.driveupload/
+# --- General ---
+.DS_Store
+.vscode/
+.idea/
+*.log
+*.tmp
+
+# --- Backend (Go) ---
+backend/.env
+backend/backend_bin
+backend/backend_output.log
+backend/tmp/
+backend/*.exe
+# Ignorar la carpeta de imágenes subidas para no borrar las del servidor
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# --- Frontend (Next.js/React) ---
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/frontend.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# --- Dependencias de Paquetes ---
+node_modules/
+.npm/
