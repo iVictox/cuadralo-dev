@@ -104,7 +104,9 @@ func SendMessage(c *fiber.Ctx) error {
 
 	// SI NO HAY MATCH, COBRAMOS ROMPEHIELOS Y LO MANDAMOS AL INBOX
 	if matchCount == 0 {
-		if sender.RompehielosCount <= 0 {
+		inventory := Inventory.GetUserInventory(myId)
+		totalCount := inventory["flash"] + inventory["clasico"] + inventory["estelar"]
+		if totalCount <= 0 {
 			return c.Status(403).JSON(fiber.Map{
 				"error":          "No tienes Rompehielos",
 				"needs_purchase": true,
@@ -112,8 +114,14 @@ func SendMessage(c *fiber.Ctx) error {
 			})
 		}
 
-		sender.RompehielosCount--
-		database.DB.Save(&sender)
+		// Usar cualquier destello disponible (prioridad: flash -> clasico -> estelar)
+		if inventory["flash"] > 0 {
+			Inventory.RemoveItem(myId, models.ItemTypeFlash, 1)
+		} else if inventory["clasico"] > 0 {
+			Inventory.RemoveItem(myId, models.ItemTypeClasico, 1)
+		} else {
+			Inventory.RemoveItem(myId, models.ItemTypeEstelar, 1)
+		}
 
 		var existingLike models.Like
 		errLike := database.DB.Where("from_user_id = ? AND to_user_id = ?", myId, data.ReceiverID).First(&existingLike).Error
@@ -156,7 +164,8 @@ func SendMessage(c *fiber.Ctx) error {
 
 	if err := database.DB.Create(&msg).Error; err != nil {
 		if matchCount == 0 {
-			sender.RompehielosCount++
+			// Restore the count that was decremented earlier
+			sender.FlashCount++
 			database.DB.Save(&sender)
 		}
 		return c.Status(500).JSON(fiber.Map{"error": "Error enviando"})

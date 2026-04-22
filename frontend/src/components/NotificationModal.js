@@ -84,6 +84,9 @@ export default function NotificationModal({ onClose, onReadSync }) {
             case "follow": return { icon: UserPlus, color: "text-green-500", bg: "bg-green-500/10 border-green-500/20" };
             case "match": return { icon: Flame, color: "text-orange-500", bg: "bg-orange-500/10 border-orange-500/20" };
             case "swipe_like": return { icon: Sparkles, color: "text-yellow-500", bg: "bg-yellow-500/10 border-yellow-500/20" };
+            case "flash_expiring": return { icon: Flame, color: "text-yellow-500", bg: "bg-yellow-500/10 border-yellow-500/20" };
+            case "flash_ended": return { icon: Flame, color: "text-gray-500", bg: "bg-gray-500/10 border-gray-500/20" };
+            case "flash_purchased": return { icon: Sparkles, color: "text-green-500", bg: "bg-green-500/10 border-green-500/20" };
             default: return { icon: Bell, color: "text-gray-500", bg: "bg-gray-500/10 border-gray-500/20" };
         }
     };
@@ -143,11 +146,18 @@ export default function NotificationModal({ onClose, onReadSync }) {
 
                                 {/* Contenido Texto */}
                                 <div className="flex-1 pr-2">
-                                    <p className="text-sm text-cuadralo-textLight dark:text-gray-200">
-                                        <span className="font-bold text-cuadralo-textLight dark:text-white">
-                                             {notif.type === 'swipe_like' ? (currentUser?.is_prime ? notif.sender?.username : 'Alguien') : notif.sender?.username}
-                                        </span> {notif.message}
-                                    </p>
+                                    {(notif.type === "flash_expiring" || notif.type === "flash_ended" || notif.type === "flash_purchased") ? (
+                                        <>
+                                            <p className="text-sm font-bold text-cuadralo-textLight dark:text-white">{notif.title}</p>
+                                            <p className="text-xs text-cuadralo-textMutedLight dark:text-gray-400 mt-0.5">{notif.body}</p>
+                                        </>
+                                    ) : (
+                                        <p className="text-sm text-cuadralo-textLight dark:text-gray-200">
+                                            <span className="font-bold text-cuadralo-textLight dark:text-white">
+                                                 {notif.type === 'swipe_like' ? (currentUser?.is_prime ? notif.sender?.username : 'Alguien') : notif.sender?.username}
+                                            </span> {notif.message}
+                                        </p>
+                                    )}
                                     <span className="text-[10px] text-cuadralo-textMutedLight dark:text-gray-500 font-bold uppercase tracking-widest mt-1 block">
                                         {new Date(notif.created_at).toLocaleDateString()} • {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>

@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var DB *gorm.DB
@@ -26,13 +27,15 @@ func Connect() {
 		os.Getenv("DB_PORT"),
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger:                 logger.Default.LogMode(logger.Warn),
+	})
 	if err != nil {
 		panic("No se pudo conectar a la base de datos")
 	}
 
 	// Migrar el esquema incluyendo los nuevos modelos del Admin
-	db.AutoMigrate(
+db.AutoMigrate(
 		&models.User{},
 		&models.Match{},
 		&models.Message{},
@@ -52,8 +55,9 @@ func Connect() {
 		&models.PaymentReport{},
 		&models.AdminLog{},
 		&models.Setting{},
-		&models.AdminRequest{},    // NUEVO: Flujo de admins
-		&models.UserActivityLog{}, // NUEVO: Logs de usuarios
+		&models.AdminRequest{},
+		&models.UserActivityLog{},
+		&models.InventoryItem{},
 	)
 
 	DB = db

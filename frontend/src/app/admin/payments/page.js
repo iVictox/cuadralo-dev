@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/utils/api";
-import { CheckCircle, XCircle, Clock, Eye, Receipt, User } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Eye, Receipt, User, Zap, Crown } from "lucide-react";
 import PaymentDetailModal from "./PaymentDetailModal";
 
 export default function AdminPayments() {
@@ -82,8 +82,20 @@ export default function AdminPayments() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="text-success font-medium">€{p.amount_usd}</div>
+                    <div className="text-success font-medium">${p.amount_usd}</div>
                     <div className="text-xs text-muted">({p.amount_ves} Bs)</div>
+                    {(p.item_type === 'flash' || p.flash_qty > 0) && (
+                      <div className="flex items-center gap-1 mt-1 text-xs text-yellow-400 font-medium">
+                        <Zap size={12} className="text-yellow-400" />
+                        {p.flash_qty || 1} destello(s) {p.flash_type || 'Flash'}
+                      </div>
+                    )}
+                    {(p.item_type === 'vip' || p.item_type === 'prime') && (
+                      <div className="flex items-center gap-1 mt-1 text-xs text-yellow-400 font-medium">
+                        <Crown size={12} className="text-yellow-400" />
+                        VIP Mensual
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {p.receipt ? (

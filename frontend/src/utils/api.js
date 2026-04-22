@@ -46,12 +46,17 @@ export const api = {
     const separator = endpoint.includes('?') ? '&' : '?';
     const noCacheUrl = `${API_URL}${endpoint}${separator}_t=${Date.now()}`;
 
-    const res = await fetch(noCacheUrl, {
-      method: "GET",
-      headers: getHeaders(endpoint),
-      cache: "no-store",
-    });
-    return handleResponse(res, endpoint);
+    try {
+      const res = await fetch(noCacheUrl, {
+        method: "GET",
+        headers: getHeaders(endpoint),
+        cache: "no-store",
+      });
+      return handleResponse(res, endpoint);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
   },
 
   post: async (endpoint, body) => {

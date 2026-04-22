@@ -3,6 +3,7 @@ package controllers
 import (
 	"cuadralo-backend/database"
 	"cuadralo-backend/models"
+	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -35,16 +36,23 @@ func Swipe(c *fiber.Ctx) error {
 
 	// ✅ FASE 3: Lógica de inventario para el Rompehielo
 	if input.Action == "rompehielo" {
-		if currentUser.RompehielosCount <= 0 {
+		inventory := Inventory.GetUserInventory(myId)
+		totalCount := inventory["flash"] + inventory["clasico"] + inventory["estelar"]
+		if totalCount <= 0 {
 			return c.Status(403).JSON(fiber.Map{
 				"error":          "Sin rompehielos",
 				"needs_purchase": true,
 				"message":        "Te has quedado sin Rompehielos. Visita la tienda para recargar tu arsenal.",
 			})
 		}
-		// Descontamos 1 rompehielo (consumible)
-		currentUser.RompehielosCount--
-		database.DB.Save(&currentUser)
+		// Descontamos 1 rompehielo (consumible) - usa cualquiera disponible
+		if inventory["flash"] > 0 {
+			Inventory.RemoveItem(myId, models.ItemTypeFlash, 1)
+		} else if inventory["clasico"] > 0 {
+			Inventory.RemoveItem(myId, models.ItemTypeClasico, 1)
+		} else {
+			Inventory.RemoveItem(myId, models.ItemTypeEstelar, 1)
+		}
 	} else if input.Action == "right" {
 		// Límite diario para likes normales si no es Prime
 		if !currentUser.IsPrime {
@@ -131,6 +139,12 @@ func GetSwipeFeed(c *fiber.Ctx) error {
 		excludedIDs = append(excludedIDs, swipe.ToUserID)
 	}
 
+	var totalUsers int64
+	database.DB.Model(&models.User{}).Count(&totalUsers)
+	if totalUsers == 0 {
+		return c.JSON([]models.User{})
+	}
+
 	var users []models.User
 	query := database.DB.Preload("Interests").Where("id NOT IN ?", excludedIDs)
 
@@ -139,16 +153,28 @@ func GetSwipeFeed(c *fiber.Ctx) error {
 		query = query.Where(haversine+" <= ?", currentUser.Latitude, currentUser.Longitude, currentUser.Latitude, maxDistance)
 	}
 
-	query = query.Order(`
-		CASE WHEN EXISTS (SELECT 1 FROM flashes f WHERE f.user_id = users.id AND f.ends_at > NOW()) THEN 2
-			 WHEN is_boosted = true AND boost_expires_at > NOW() THEN 1
+	var flashExists bool
+	if err := database.DB.Raw("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'flashes')").Scan(&flashExists).Error; err == nil && flashExists {
+		query = query.Order(`
+			CASE WHEN is_boosted = true AND boost_expires_at > NOW() THEN 1
 			 ELSE 0
-		END DESC, RAND()`)
+			END DESC`)
+
+		if err := database.DB.Raw(`
+			UPDATE users u
+			SET is_boosted = true
+			FROM flashes f
+			WHERE f.user_id = u.id AND f.ends_at > NOW()`).Error; err == nil {
+			log.Println("Flash boost applied")
+		}
+	} else {
+		query = query.Order("RAND()")
+	}
 
 	result := query.Limit(20).Find(&users)
 
 	if result.Error != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Error cargando feed"})
+		return c.Status(500).JSON(fiber.Map{"error": "Error cargando feed: " + result.Error.Error()})
 	}
 
 	for i := range users {

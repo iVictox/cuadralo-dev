@@ -26,13 +26,18 @@ func GetMyPlan(c *fiber.Ctx) error {
 		database.DB.Save(&user)
 	}
 
+	inventory := Inventory.GetUserInventory(userId)
+
+	rompehielosCount := inventory["flash"] + inventory["clasico"] + inventory["estelar"]
+
 	return c.JSON(fiber.Map{
-		"is_prime":          user.IsPrime,
+		"is_prime":           user.IsPrime,
 		"prime_expires_at":  user.PrimeExpiresAt,
 		"is_boosted":        user.IsBoosted,
 		"boost_expires_at":  user.BoostExpiresAt,
 		"boosts_count":      user.BoostsCount,
-		"rompehielos_count": user.RompehielosCount,
+		"rompehielos_count": rompehielosCount,
+		"inventory":        inventory,
 	})
 }
 
@@ -51,12 +56,16 @@ func BuyPrime(c *fiber.Ctx) error {
 	}
 
 	user.BoostsCount += 1
-	user.RompehielosCount += 3
 	database.DB.Save(&user)
+
+	Inventory.AddItem(userId, models.ItemTypeFlash, 3)
+
+	inventory := Inventory.GetUserInventory(userId)
 
 	return c.JSON(fiber.Map{
 		"message": "¡Bienvenido a Cuadralo VIP! Disfruta de tus bonos mensuales.",
 		"user":    user,
+		"inventory": inventory,
 	})
 }
 
@@ -90,27 +99,29 @@ func BuyBoost(c *fiber.Ctx) error {
 func BuyRompehielos(c *fiber.Ctx) error {
 	userId := uint(c.Locals("userId").(float64))
 	var data struct {
-		Amount int `json:"amount"`
+		Type     string `json:"type"`
+		Quantity int    `json:"quantity"`
 	}
 	if err := c.BodyParser(&data); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Datos inválidos"})
 	}
 
-	if data.Amount != 1 && data.Amount != 5 && data.Amount != 15 {
-		return c.Status(400).JSON(fiber.Map{"error": "Paquete inválido"})
+	validTypes := map[string]bool{"flash": true, "clasico": true, "estelar": true}
+	if !validTypes[data.Type] {
+		return c.Status(400).JSON(fiber.Map{"error": "Tipo inválido"})
 	}
 
-	var user models.User
-	if err := database.DB.First(&user, userId).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "Usuario no encontrado"})
+	if data.Quantity <= 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "Cantidad inválida"})
 	}
 
-	user.RompehielosCount += data.Amount
-	database.DB.Save(&user)
+	Inventory.AddItem(userId, models.ItemType(data.Type), data.Quantity)
+
+	inventory := Inventory.GetUserInventory(userId)
 
 	return c.JSON(fiber.Map{
-		"message":           "¡Rompehielos comprados con éxito!",
-		"rompehielos_count": user.RompehielosCount,
+		"message":  "¡Destellos comprados!",
+		"inventory": inventory,
 	})
 }
 
@@ -142,14 +153,17 @@ func ActivateBoost(c *fiber.Ctx) error {
 }
 
 type PaymentReportInput struct {
-	ItemType  string  `json:"item_type"`
-	AmountUSD float64 `json:"amount_usd"` // Usado en la BD, pero lógicamente representa EUROS
+	ItemType   string  `json:"item_type"`
+	ItemName  string  `json:"item_name,omitempty"`
+	AmountUSD float64 `json:"amount_usd"`
 	AmountVES float64 `json:"amount_ves"`
-	Rate      float64 `json:"rate"`
+	Rate     float64 `json:"rate"`
 	Reference string  `json:"reference"`
-	Bank      string  `json:"bank"`
-	Phone     string  `json:"phone"`
-	Receipt   string  `json:"receipt"`
+	Bank     string  `json:"bank"`
+	Phone    string  `json:"phone"`
+	Receipt  string  `json:"receipt"`
+	FlashQty int     `json:"flash_qty,omitempty"`
+	FlashType string  `json:"flash_type,omitempty"`
 }
 
 func ReportPayment(c *fiber.Ctx) error {
@@ -166,14 +180,17 @@ func ReportPayment(c *fiber.Ctx) error {
 	report := models.PaymentReport{
 		UserID:    userId,
 		ItemType:  input.ItemType,
+		ItemName:  input.ItemName,
 		AmountUSD: input.AmountUSD,
 		AmountVES: input.AmountVES,
-		Rate:      input.Rate,
+		Rate:     input.Rate,
 		Reference: input.Reference,
-		Bank:      input.Bank,
-		Phone:     input.Phone,
-		Receipt:   input.Receipt,
-		Status:    "pending",
+		Bank:     input.Bank,
+		Phone:    input.Phone,
+		Receipt:  input.Receipt,
+		FlashQty: input.FlashQty,
+		FlashType: input.FlashType,
+		Status:   "pending",
 		CreatedAt: time.Now(),
 	}
 

@@ -3,8 +3,10 @@ package controllers
 import (
 	"cuadralo-backend/database"
 	"cuadralo-backend/models"
+	"cuadralo-backend/websockets"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -35,7 +37,9 @@ func GetDashboardStats(c *fiber.Ctx) error {
 	database.DB.Model(&models.Post{}).Count(&totalPosts)
 	database.DB.Model(&models.User{}).Where("is_prime = ?", true).Count(&primeUsers)
 	database.DB.Model(&models.PaymentReport{}).Where("status = ?", "pending").Count(&totalPayments)
-	database.DB.Model(&models.User{}).Where("last_active_at >= ?", time.Now().Add(-24*time.Hour)).Count(&activeUsers)
+	
+	database.DB.Model(&models.User{}).Count(&activeUsers)
+	
 	database.DB.Model(&models.User{}).Where("is_suspended = ?", true).Count(&suspendedUsers)
 
 	type DailyGrowth struct {
@@ -63,7 +67,7 @@ func GetDashboardStats(c *fiber.Ctx) error {
 	var revenue []MonthlyRevenue
 
 	database.DB.Raw(`
-		SELECT TO_CHAR(DATE_TRUNC('month', created_at), 'Jan') as month, COALESCE(SUM(amount), 0) as amount
+		SELECT TO_CHAR(DATE_TRUNC('month', created_at), 'Jan') as month, COALESCE(SUM(amount_usd), 0) as amount
 		FROM payment_reports
 		WHERE status = 'approved' AND created_at >= NOW() - INTERVAL '6 months'
 		GROUP BY DATE_TRUNC('month', created_at)
@@ -113,10 +117,10 @@ func GetDashboardStats(c *fiber.Ctx) error {
 	}
 
 	var currentRevenue float64
-	database.DB.Model(&models.PaymentReport{}).Where("status = 'approved' AND created_at >= ?", time.Now().AddDate(0, 0, -30)).Select("COALESCE(SUM(amount), 0)").Scan(&currentRevenue)
+	database.DB.Model(&models.PaymentReport{}).Where("status = 'approved' AND created_at >= ?", time.Now().AddDate(0, 0, -30)).Select("COALESCE(SUM(amount_usd), 0)").Scan(&currentRevenue)
 
 	var lastMonthRevenue float64
-	database.DB.Model(&models.PaymentReport{}).Where("status = 'approved' AND created_at >= ? AND created_at < ?", time.Now().AddDate(0, -1, 0), time.Now().AddDate(0, 0, -30)).Select("COALESCE(SUM(amount), 0)").Scan(&lastMonthRevenue)
+	database.DB.Model(&models.PaymentReport{}).Where("status = 'approved' AND created_at >= ? AND created_at < ?", time.Now().AddDate(0, -1, 0), time.Now().AddDate(0, 0, -30)).Select("COALESCE(SUM(amount_usd), 0)").Scan(&lastMonthRevenue)
 
 	revenueChange := 0.0
 	if lastMonthRevenue > 0 {
@@ -602,7 +606,10 @@ func RevokeAdminRole(c *fiber.Ctx) error {
 func GetAllPaymentsAdmin(c *fiber.Ctx) error {
 	var payments []models.PaymentReport
 	if err := database.DB.Preload("User").Order("created_at desc").Find(&payments).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al obtener pagos"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al obtener pagos: " + err.Error()})
+	}
+	if payments == nil {
+		payments = []models.PaymentReport{}
 	}
 	return c.JSON(payments)
 }
@@ -617,7 +624,7 @@ func VerifyPayment(c *fiber.Ctx) error {
 	}
 
 	var payload struct {
-		Action   string `json:"action"`
+		Action    string `json:"action"`
 		GrantVIP bool   `json:"grant_vip"`
 	}
 	if err := c.BodyParser(&payload); err != nil {
@@ -626,6 +633,8 @@ func VerifyPayment(c *fiber.Ctx) error {
 
 	if payload.Action == "verify" {
 		payment.Status = "approved"
+		fmt.Printf("[VERIFY PAYMENT] Processing payment ID: %d, UserID: %d, ItemType: %s, FlashQty: %d, FlashType: %s\n", 
+			payment.ID, payment.UserID, payment.ItemType, payment.FlashQty, payment.FlashType)
 
 		if payment.ItemType == "vip" || payment.ItemType == "prime" || payload.GrantVIP {
 			database.DB.Model(&models.User{}).Where("id = ?", payment.UserID).Updates(map[string]interface{}{
@@ -635,12 +644,47 @@ func VerifyPayment(c *fiber.Ctx) error {
 
 			database.DB.Create(&models.Subscription{
 				UserID:    payment.UserID,
-				Plan:      "vip",
+				Plan:     "vip",
 				StartDate: time.Now(),
-				EndDate:   time.Now().AddDate(0, 1, 0),
-				Status:    "active",
+				EndDate:  time.Now().AddDate(0, 1, 0),
+				Status:   "active",
 				CreatedAt: time.Now(),
 			})
+		}
+		if payment.FlashQty > 0 || payment.ItemType == "flash" || strings.HasPrefix(payment.ItemType, "flash_") {
+			flashQty := payment.FlashQty
+			if flashQty <= 0 {
+				flashQty = 1
+			}
+			flashType := payment.FlashType
+			if flashType == "" {
+				if strings.HasPrefix(payment.ItemType, "flash_") {
+					flashType = strings.TrimPrefix(payment.ItemType, "flash_")
+				} else {
+					flashType = "clasico"
+				}
+			}
+
+			fmt.Printf("[VERIFY FLASH] Adding %d destellos de tipo %s al usuario %d\n", flashQty, flashType, payment.UserID)
+			
+			itemType := models.ItemType(flashType)
+			if err := Inventory.AddItem(payment.UserID, itemType, flashQty); err != nil {
+				fmt.Printf("[VERIFY ERROR] AddItem failed: %v\n", err)
+			} else {
+				inventory := Inventory.GetUserInventory(payment.UserID)
+				fmt.Printf("[VERIFY SUCCESS] User inventory: %+v\n", inventory)
+			}
+
+			notification := models.Notification{
+				UserID:   payment.UserID,
+				SenderID: payment.UserID,
+				Type:     "flash_purchased",
+				Title:    "¡Destellos acreditados!",
+				Body:     fmt.Sprintf("Se han acreditado %d destellos %s a tu cuenta. ¡Actívalos y destaca!", flashQty, flashType),
+				IsRead:   false,
+			}
+			database.DB.Create(&notification)
+			websockets.SendToUser(fmt.Sprintf("%d", payment.UserID), "new_notification", notification)
 		}
 	} else if payload.Action == "reject" {
 		payment.Status = "rejected"
@@ -740,4 +784,74 @@ func UpdateSystemSettings(c *fiber.Ctx) error {
 
 	LogAdminAction(adminID, "update_settings", nil, "Configuración del sistema actualizada")
 	return c.JSON(fiber.Map{"message": "Configuraciones guardadas y activadas con éxito."})
+}
+
+func MigrateInventory(c *fiber.Ctx) error {
+	adminID := uint(c.Locals("userId").(float64))
+
+	var users []models.User
+	if err := database.DB.Find(&users).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Error al obtener usuarios"})
+	}
+
+	migrated := 0
+	for _, user := range users {
+		if user.FlashCount > 0 {
+			var existing models.InventoryItem
+			err := database.DB.Where("user_id = ? AND item_type = ?", user.ID, models.ItemTypeFlash).First(&existing).Error
+			if err != nil {
+				database.DB.Create(&models.InventoryItem{
+					UserID:    user.ID,
+					ItemType: models.ItemTypeFlash,
+					Count:    user.FlashCount,
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+				})
+			} else {
+				existing.Count += user.FlashCount
+				existing.UpdatedAt = time.Now()
+				database.DB.Save(&existing)
+			}
+			migrated++
+		}
+		if user.ClasicoCount > 0 {
+			var existing models.InventoryItem
+			err := database.DB.Where("user_id = ? AND item_type = ?", user.ID, models.ItemTypeClasico).First(&existing).Error
+			if err != nil {
+				database.DB.Create(&models.InventoryItem{
+					UserID:    user.ID,
+					ItemType: models.ItemTypeClasico,
+					Count:    user.ClasicoCount,
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+				})
+			} else {
+				existing.Count += user.ClasicoCount
+				existing.UpdatedAt = time.Now()
+				database.DB.Save(&existing)
+			}
+			migrated++
+		}
+		if user.EstelarCount > 0 {
+			var existing models.InventoryItem
+			err := database.DB.Where("user_id = ? AND item_type = ?", user.ID, models.ItemTypeEstelar).First(&existing).Error
+			if err != nil {
+				database.DB.Create(&models.InventoryItem{
+					UserID:    user.ID,
+					ItemType: models.ItemTypeEstelar,
+					Count:    user.EstelarCount,
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+				})
+			} else {
+				existing.Count += user.EstelarCount
+				existing.UpdatedAt = time.Now()
+				database.DB.Save(&existing)
+			}
+			migrated++
+		}
+	}
+
+	LogAdminAction(adminID, "migrate_inventory", nil, fmt.Sprintf("Migrados %d usuarios al nuevo inventario"))
+	return c.JSON(fiber.Map{"message": "Inventario migrado", "users_processed": len(users)})
 }

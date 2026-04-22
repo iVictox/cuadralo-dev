@@ -46,6 +46,7 @@ type Flash struct {
 	StartsAt  time.Time `json:"starts_at"`
 	EndsAt    time.Time `gorm:"index" json:"ends_at"`
 	ReachedCount int    `gorm:"default:0" json:"reached_count"`
+	NotifiedExpired bool `gorm:"default:false" json:"notified_expired"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

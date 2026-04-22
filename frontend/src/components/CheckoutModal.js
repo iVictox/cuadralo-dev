@@ -102,16 +102,23 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
       try {
           const receiptUrl = await api.upload(receiptFile);
 
-          await api.post("/premium/report-payment", {
-              item_type: product.id,
-              amount_usd: product.price, // Registramos en USD
+          const paymentData = {
+              item_type: product.type === 'flash' ? 'flash' : product.id,
+              item_name: product.name,
+              amount_usd: product.price,
               amount_ves: parseFloat(amountVES),
               rate: bcvRate,
               reference: formData.reference,
               bank: formData.bank,
               phone: formData.phone,
-              receipt: receiptUrl
-          });
+              receipt: receiptUrl,
+              ...(product.type === 'flash' && {
+                  flash_qty: product.quantity,
+                  flash_type: product.flashType
+              })
+          };
+
+          await api.post("/premium/report-payment", paymentData);
 
           setStep(3);
       } catch (error) {
@@ -179,6 +186,13 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
                                             <BenefitRow text="Rebobinar perfiles sin límites" />
                                             <BenefitRow text="1 Destello mensual gratis" />
                                             <BenefitRow text="3 Rompehielos mensuales gratis" />
+                                        </>
+                                    ) : product.type === 'flash' ? (
+                                        <>
+                                            <BenefitRow text={`${product.quantity} destello(s) de tipo ${product.flashType}`} />
+                                            <BenefitRow text="Visibilidad máxima en el feed" />
+                                            <BenefitRow text="Apareces primero en búsquedas" />
+                                            <BenefitRow text="Badge de destello activo" />
                                         </>
                                     ) : (
                                         <BenefitRow text="Mejoras específicas del paquete" />

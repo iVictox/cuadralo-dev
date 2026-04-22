@@ -30,23 +30,47 @@ export default function CardStack({ onOpenFilters, onLoaded }) {
 
     const [isPrime, setIsPrime] = useState(false);
     const [myPhoto, setMyPhoto] = useState(null);
+    const [flashInfo, setFlashInfo] = useState(null);
 
     const [swipeDir, setSwipeDir] = useState("right");
 
     useEffect(() => {
         fetchFeed();
         fetchMyData();
+        fetchFlashInfo();
     }, []);
 
-    const fetchMyData = async () => {
+const fetchMyData = async () => {
         try {
-            const status = await api.get("/premium/status");
-            setIsPrime(status.is_prime);
-
             const me = await api.get("/me");
-            setMyPhoto(me.photo || "https://via.placeholder.com/150");
-        } catch (e) { }
+            setIsPrime(me.is_prime || false);
+            setMyPhoto(me.photo || null);
+        } catch (e) { console.warn(e); }
     };
+
+    const fetchFlashInfo = async () => {
+        try {
+            const info = await api.get("/flash/info");
+            setFlashInfo(info?.flash || null);
+        } catch (e) { console.warn(e); }
+    };
+
+    const formatTime = (seconds) => {
+        if (!seconds || seconds <= 0) return "0:00";
+        return `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, "0")}`;
+    };
+
+    useEffect(() => {
+        if (!flashInfo?.is_active) return;
+        const interval = setInterval(async () => {
+            setFlashInfo(prev => {
+                if (!prev) return prev;
+                const newTime = Math.max(0, prev.time_remaining - 1);
+                return { ...prev, time_remaining: newTime, is_expiring: newTime <= 300, is_active: newTime > 0 };
+            });
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [flashInfo?.is_active]);
 
     const fetchFeed = async () => {
         try {
@@ -306,14 +330,31 @@ export default function CardStack({ onOpenFilters, onLoaded }) {
                             <Heart size={28} className="text-white fill-current" strokeWidth={2} />
                         </motion.button>
 
-                        {/* Flash (Destellos) */}
+                        {/* Flash (Destellos) - Con animación cuando está activo */}
                         <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             onClick={() => setShowFlash(true)}
-                            className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 bg-gradient-to-br from-yellow-500/80 to-orange-500/80 backdrop-blur-xl rounded-full flex items-center justify-center shadow-md border border-white/40 dark:border-white/20 hover:scale-110 active:scale-95 transition-all"
+                            className={`w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 backdrop-blur-xl rounded-full flex items-center justify-center shadow-md border border-white/40 dark:border-white/20 hover:scale-110 active:scale-95 transition-all relative overflow-hidden ${
+                                flashInfo?.is_active 
+                                    ? "bg-gradient-to-br from-green-500 to-emerald-600 animate-pulse" 
+                                    : "bg-gradient-to-br from-yellow-500/80 to-orange-500/80"
+                            }`}
                         >
-                            <Zap size={20} className="text-white fill-current" strokeWidth={2.5} />
+                            {flashInfo?.is_active ? (
+                                <motion.div
+                                    animate={{ scale: [1, 1.2, 1] }}
+                                    transition={{ duration: 1, repeat: Infinity }}
+                                    className="flex flex-col items-center justify-center"
+                                >
+                                    <Zap size={16} className="text-white fill-current" strokeWidth={2.5} />
+                                    <span className="text-[10px] text-white font-bold leading-none">
+                                        {formatTime(flashInfo?.time_remaining || 0)}
+                                    </span>
+                                </motion.div>
+                            ) : (
+                                <Zap size={20} className="text-white fill-current" strokeWidth={2.5} />
+                            )}
                         </motion.button>
                     </motion.div>
                 </>
@@ -380,7 +421,7 @@ export default function CardStack({ onOpenFilters, onLoaded }) {
                 {showBoost && <BoostModal onClose={() => setShowBoost(false)} />}
             </AnimatePresence>
             <AnimatePresence>
-                {showFlash && <FlashModal onClose={() => setShowFlash(false)} />}
+                {showFlash && <FlashModal onClose={() => { setShowFlash(false); fetchFlashInfo(); }} />}
             </AnimatePresence>
             <AnimatePresence>
                 {matchData && (

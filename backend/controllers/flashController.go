@@ -40,10 +40,16 @@ func GetFlashInfo(c *fiber.Ctx) error {
 		Order("ends_at DESC").
 		First(&flash)
 
+	inventory := Inventory.GetUserInventory(userID)
+	if inventory == nil {
+		inventory = map[string]int{}
+	}
+
 	if result.Error != nil {
 		return c.JSON(map[string]interface{}{
 			"has_flash": false,
 			"flash":    nil,
+			"inventory": inventory,
 		})
 	}
 
@@ -63,6 +69,7 @@ func GetFlashInfo(c *fiber.Ctx) error {
 	return c.JSON(map[string]interface{}{
 		"has_flash": true,
 		"flash":     flashInfo,
+		"inventory": inventory,
 	})
 }
 
@@ -143,6 +150,15 @@ func ActivateFlash(c *fiber.Ctx) error {
 		return c.Status(400).JSON(map[string]string{"error": "Tipo requerido"})
 	}
 
+	itemType := models.ItemType(input.Type)
+	if !Inventory.HasItem(userID, itemType) {
+		return c.Status(400).JSON(map[string]string{"needs_purchase": "true", "error": "No tienes destellos disponibles. Compra primero."})
+	}
+
+	if err := Inventory.RemoveItem(userID, itemType, 1); err != nil {
+		return c.Status(500).JSON(map[string]string{"error": "Error al consumir destello"})
+	}
+
 	now := time.Now()
 	flashType := models.FlashType(input.Type)
 
@@ -170,9 +186,12 @@ func ActivateFlash(c *fiber.Ctx) error {
 		IsExpiring:   false,
 	}
 
+	inventory := Inventory.GetUserInventory(userID)
+
 	return c.JSON(map[string]interface{}{
 		"success": true,
 		"flash":   flashInfo,
+		"inventory": inventory,
 		"message": "¡Destello activado! La gente te verá más.",
 	})
 }

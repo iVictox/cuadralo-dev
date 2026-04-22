@@ -61,33 +61,32 @@ func main() {
 		for {
 			time.Sleep(1 * time.Minute)
 
-			// Notificar a usuarios whose flash expires in 5 minutes
+			// Solo buscar destellos que expirarán en los próximos 5-6 minutos
 			expiringIn5Min := time.Now().Add(5 * time.Minute)
 			notExpiringYet := time.Now().Add(6 * time.Minute)
 			var flashesExpiring []models.Flash
-			database.DB.Preload("User").Preload("User.SentNotifications").
+			database.DB.Preload("User").
 				Where("ends_at BETWEEN ? AND ?", notExpiringYet, expiringIn5Min).
 				Find(&flashesExpiring)
 
 			for _, flash := range flashesExpiring {
 				// Verificar que no haya enviado ya la notificación de 5 min
-				alreadySent := false
-				for _, n := range flash.User.SentNotifications {
-					if n.Type == "flash_expiring" && n.FlashID != nil && *n.FlashID == flash.ID {
-						alreadySent = true
-						break
-					}
-				}
-				if !alreadySent {
+				var count int64
+				database.DB.Model(&models.Notification{}).
+					Where("user_id = ? AND type = 'flash_expiring' AND flash_id = ?", flash.UserID, flash.ID).
+					Count(&count)
+				
+				if count == 0 {
 					notification := models.Notification{
-						UserID: flash.UserID,
-						Type:   "flash_expiring",
-						FlashID: &flash.ID,
-						Title:  "Tu Destello está por finalizar",
-						Body:   "Te quedan 5 minutos de Destello. ¡Rápido, sigue cuadrando!",
+						UserID:   flash.UserID,
+						SenderID: flash.UserID,
+						Type:     "flash_expiring",
+						FlashID:  &flash.ID,
+						Title:    "Tu Destello está por finalizar",
+						Body:    "Te quedan 5 minutos. ¡Rápido, sigue cuadrando!",
 					}
 					database.DB.Create(&notification)
-					websockets.SendToUser(fmt.Sprintf("%d", flash.UserID), "notification", notification.ToMap())
+					websockets.SendToUser(fmt.Sprintf("%d", flash.UserID), "new_notification", notification.ToMap())
 					log.Printf("⚡ Destello de usuario %d expirando en 5 min, notificación enviada.", flash.UserID)
 				}
 			}
@@ -99,30 +98,33 @@ func main() {
 		for {
 			time.Sleep(1 * time.Minute)
 
+			// Solo buscar destellos que expiraron en el último minuto
+			oneMinuteAgo := time.Now().Add(-1 * time.Minute)
+			now := time.Now()
+			
 			var expiredFlashes []models.Flash
-			database.DB.Preload("User").Preload("User.SentNotifications").
-				Where("ends_at < ?", time.Now()).
+			database.DB.Preload("User").
+				Where("ends_at BETWEEN ? AND ?", oneMinuteAgo, now).
 				Find(&expiredFlashes)
 
 			for _, flash := range expiredFlashes {
 				// Verificar que no haya enviado ya la notificación de fin
-				alreadySent := false
-				for _, n := range flash.User.SentNotifications {
-					if n.Type == "flash_ended" && n.FlashID != nil && *n.FlashID == flash.ID {
-						alreadySent = true
-						break
-					}
-				}
-				if !alreadySent {
+				var count int64
+				database.DB.Model(&models.Notification{}).
+					Where("user_id = ? AND type = 'flash_ended' AND flash_id = ?", flash.UserID, flash.ID).
+					Count(&count)
+				
+				if count == 0 {
 					notification := models.Notification{
-						UserID: flash.UserID,
-						Type:   "flash_ended",
-						FlashID: &flash.ID,
-						Title:  "Tu Destello ha finalizado",
-						Body:   "Tu Destello " + flash.Type.GetName() + " ha terminado. Volviste a la normalidad.",
+						UserID:   flash.UserID,
+						SenderID: flash.UserID,
+						Type:     "flash_ended",
+						FlashID:  &flash.ID,
+						Title:    "Tu Destello ha finalizado",
+						Body:     "Tu Destello " + flash.Type.GetName() + " ha terminado. ¡Vuelve a activar cuando quieras!",
 					}
 					database.DB.Create(&notification)
-					websockets.SendToUser(fmt.Sprintf("%d", flash.UserID), "notification", notification.ToMap())
+					websockets.SendToUser(fmt.Sprintf("%d", flash.UserID), "new_notification", notification.ToMap())
 					log.Printf("⚡ Destello de usuario %d finalizado. Alcanzó a %d personas.", flash.UserID, flash.ReachedCount)
 				}
 			}
@@ -137,7 +139,7 @@ func main() {
 	// Configuración CORS - MODIFICADO SOLO PARA LOCALHOST
 	app.Use(cors.New(cors.Config{
 		AllowCredentials: true,
-		AllowOrigins:     "http://localhost:3000",
+		AllowOrigins:     "http://localhost:3000,http://127.0.0.1:3000",
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, Upgrade, Connection",
 	}))
 

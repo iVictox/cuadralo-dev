@@ -164,6 +164,7 @@ func Setup(app *fiber.App) {
 
 	admin.Get("/logs", controllers.GetAdminLogs)
 	admin.Get("/settings", controllers.GetSystemSettings)
+	admin.Post("/inventory/migrate", controllers.MigrateInventory)
 
 	// ==========================================
 	// 🔴 PANEL DE ALTO RIESGO (Solo SuperAdmin)

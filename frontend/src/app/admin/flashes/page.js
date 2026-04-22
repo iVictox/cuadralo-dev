@@ -1,7 +1,7 @@
-" client";
+"use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/utils/api";
 import { Search, Zap, Clock, Eye, Filter, TrendingUp, RefreshCw } from "lucide-react";
 import { useDebounce } from 'use-debounce';

@@ -68,9 +68,12 @@ type User struct {
 	IsBoosted      bool      `json:"is_boosted" gorm:"default:false"`
 	BoostExpiresAt time.Time `json:"boost_expires_at"`
 
-	BoostsCount      int       `json:"boosts_count" gorm:"default:0"`
-	RompehielosCount int       `json:"rompehielos_count" gorm:"default:0"`
-	DailyLikes       int       `json:"daily_likes" gorm:"default:0"`
+	BoostsCount       int `json:"boosts_count" gorm:"default:0"`
+	FlashCount      int `json:"flash_count" gorm:"default:0"`
+	ClasicoCount    int `json:"clasico_count" gorm:"default:0"`
+	EstelarCount   int `json:"estelar_count" gorm:"default:0"`
+	DailyLikes     int       `json:"daily_likes" gorm:"default:0"`
+	RompehielosCount int `json:"rompehielos_count" gorm:"-" json:"-"` // Calculado: flash + clasico + estelar
 	LastLikeDate     time.Time `json:"last_like_date"`
 
 	IsFollowing    bool `gorm:"-" json:"is_following"`
