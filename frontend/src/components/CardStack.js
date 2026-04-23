@@ -10,6 +10,7 @@ import ProfileDetailsModal from "@/components/ProfileDetailsModal";
 import PrimeModal from "@/components/PrimeModal";
 import BoostModal from "@/components/BoostModal";
 import FlashModal from "@/components/FlashModal";
+import IcebreakerModal from "@/components/IcebreakerModal";
 import { getInterestInfo } from "@/utils/interests";
 import SquareLoader from "./SquareLoader";
 
@@ -360,54 +361,18 @@ const fetchMyData = async () => {
                 </>
             )}
 
-            {/* Modal Icebreaker */}
+            {/* Modal Icebreaker - Nuevo estilo Cuadralo Glass */}
             <AnimatePresence>
                 {showIcebreaker && (
-                    <motion.div
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-                            className="bg-white/80 dark:bg-[#1a1a1a]/90 backdrop-blur-2xl rounded-[2rem] p-6 w-full max-w-sm shadow-xl border border-white/30 dark:border-white/20 relative overflow-hidden"
-                        >
-                            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-blue-600" />
-                            <button onClick={() => setShowIcebreaker(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors">
-                                <X size={24} />
-                            </button>
-                            <div className="flex items-center gap-4 mb-5">
-                                <div className="relative">
-                                    <img src={showIcebreaker.photos[0]} className="w-14 h-14 rounded-2xl object-cover shadow-md" alt="" />
-                                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
-                                        <Sparkles size={12} className="text-white" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <h3 className="font-black text-xl text-cuadralo-textLight dark:text-white">Rompe el Hielo</h3>
-                                    <p className="text-xs text-blue-500 font-bold uppercase tracking-widest">Conexión Directa</p>
-                                </div>
-                            </div>
-                            <p className="text-sm text-cuadralo-textMutedLight dark:text-gray-400 mb-4 font-medium">Envía un mensaje llamativo a {showIcebreaker.name} antes de hacer match. Destaca sobre el resto.</p>
-
-                            <textarea
-                                autoFocus
-                                value={icebreakerMsg}
-                                onChange={(e) => setIcebreakerMsg(e.target.value)}
-                                placeholder="Escribe algo ingenioso..."
-                                className="w-full bg-white/50 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-2xl p-4 text-sm resize-none outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-black/50 h-28 mb-4 transition-all"
-                                maxLength={150}
-                            />
-                            <motion.button
-                                whileTap={{ scale: 0.98 }}
-                                onClick={sendIcebreaker}
-                                disabled={!icebreakerMsg.trim()}
-                                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm uppercase tracking-wider py-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
-                            >
-                                <Sparkles size={18} />
-                                Enviar y Dar Like
-                            </motion.button>
-                        </motion.div>
-                    </motion.div>
+                    <IcebreakerModal 
+                        targetProfile={showIcebreaker}
+                        onClose={() => setShowIcebreaker(null)}
+                        onSuccess={() => {
+                            const cardToRemove = showIcebreaker;
+                            setHistory(prev => [...prev, cardToRemove]);
+                            setCards((prev) => prev.filter((card) => card.id !== showIcebreaker.id));
+                        }}
+                    />
                 )}
             </AnimatePresence>
 

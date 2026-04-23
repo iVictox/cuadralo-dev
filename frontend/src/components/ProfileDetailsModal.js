@@ -8,6 +8,7 @@ import {
 import { api } from "@/utils/api";
 import { getInterestInfo } from "@/utils/interests"; 
 import ChatWindow from "@/components/ChatWindow"; 
+import IcebreakerModal from "@/components/IcebreakerModal"; 
 
 export default function ProfileDetailsModal({ profile, onClose }) {
     const [fullProfile, setFullProfile] = useState(profile);
@@ -15,6 +16,7 @@ export default function ProfileDetailsModal({ profile, onClose }) {
     const [activePhoto, setActivePhoto] = useState(0);
     
     const [showDirectChat, setShowDirectChat] = useState(false);
+    const [showIcebreaker, setShowIcebreaker] = useState(false);
 
     useEffect(() => {
         const fetchFullDetails = async () => {
@@ -139,10 +141,10 @@ export default function ProfileDetailsModal({ profile, onClose }) {
                     {/* 📄 INFO DEL PERFIL INFERIOR */}
                     <div className="px-6 pb-10 relative -mt-16 z-10 flex-1">
                         
-                        {/* ✅ BOTÓN DE CHAT DIRECTO FLOTANTE */}
+                        {/* ✅ BOTÓN DE MENSAJE FLOTANTE - Abre IcebreakerModal */}
                         <button 
-                            onClick={() => setShowDirectChat(true)}
-                            className="absolute -top-6 right-6 w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white shadow-[0_10px_20px_rgba(59,130,246,0.5)] hover:scale-110 active:scale-95 transition-all z-40 border-2 border-[#140520]"
+                            onClick={() => setShowIcebreaker(true)}
+                            className="absolute -top-6 right-6 w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center text-white shadow-[0_10px_20px_rgba(59,130,246,0.5)] hover:scale-110 active:scale-95 transition-all z-40 border-2 border-[#140520]"
                         >
                             <MessageCircle size={26} fill="currentColor" />
                         </button>
@@ -229,19 +231,12 @@ export default function ProfileDetailsModal({ profile, onClose }) {
 
             {/* ✅ CORRECCIÓN: VENTANA DE CHAT AHORA VERIFICA SI ES MATCH */}
             <AnimatePresence>
-                {showDirectChat && (
-                    <div className="fixed inset-0 z-[400] bg-black/90">
-                        <ChatWindow 
-                            chat={{ 
-                                id: fullProfile.id, 
-                                name: fullProfile.name, 
-                                photo: photos[0],
-                                // ✅ Si es match, no será Rompehielo, será gratis.
-                                isDirect: !fullProfile.is_match 
-                            }} 
-                            onBack={() => setShowDirectChat(false)} 
-                        />
-                    </div>
+                {showIcebreaker && (
+                    <IcebreakerModal 
+                        targetProfile={fullProfile}
+                        onClose={() => setShowIcebreaker(false)}
+                        onSuccess={() => setShowIcebreaker(false)}
+                    />
                 )}
             </AnimatePresence>
         </>

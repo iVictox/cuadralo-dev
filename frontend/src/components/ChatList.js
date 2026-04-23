@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, MessageCircle, Zap, Crown } from "lucide-react";
+import { Search, MessageCircle, Zap, Crown, Sparkles, Heart } from "lucide-react";
 import { api } from "@/utils/api";
 import BoostModal from "@/components/BoostModal";
 import PrimeModal from "@/components/PrimeModal";
@@ -11,6 +11,7 @@ import SquareLoader from "./SquareLoader";
 export default function ChatList({ onChatSelect, onLoaded }) {
   const [newMatches, setNewMatches] = useState([]);
   const [conversations, setConversations] = useState([]);
+  const [likes, setLikes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -23,7 +24,7 @@ export default function ChatList({ onChatSelect, onLoaded }) {
 
     const handleSocketEvent = (e) => {
         const data = e.detail;
-        if (data.type === "new_message" || data.type === "messages_read" || data.type === "new_match") {
+        if (data.type === "new_message" || data.type === "messages_read" || data.type === "new_match" || data.type === "new_icebreaker") {
             fetchData();
         }
     };
@@ -42,6 +43,9 @@ export default function ChatList({ onChatSelect, onLoaded }) {
         setNewMatches(news);
         setConversations(chats);
       }
+      
+      const likesData = await api.get("/likes/pending");
+      setLikes(likesData || []);
     } catch (error) {
       console.error("Error chats:", error);
     } finally {
@@ -56,6 +60,10 @@ export default function ChatList({ onChatSelect, onLoaded }) {
 
   const filteredConversations = conversations.filter(chat => 
     chat.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredLikes = likes.filter(like => 
+    like.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -93,6 +101,46 @@ export default function ChatList({ onChatSelect, onLoaded }) {
                 <div className="flex-1">
                     <h4 className="text-sm font-bold">¿Pocos matches?</h4>
                     <p className="text-[10px] uppercase font-black tracking-widest opacity-60">Usa un destello ahora</p>
+                </div>
+            </div>
+        )}
+
+        {filteredLikes.length > 0 && (
+            <div className="px-6 mb-6">
+                <h2 className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                    <Heart size={14} className="fill-cyan-500" /> Le Gustas 💌
+                </h2>
+                <div className="space-y-2">
+                    {filteredLikes.map((like) => (
+                        <motion.div 
+                            key={like.id}
+                            initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                            className="p-4 rounded-2xl bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 flex items-center gap-4 cursor-pointer hover:scale-[1.01] transition-all"
+                            onClick={() => onChatSelect(like)}
+                        >
+                            <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-gray-700 border-2 border-cyan-500/30">
+                                <img src={like.photo || like.img} alt={like.name} className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-sm font-bold text-white">{like.name}</h3>
+                                    {like.is_prime && <Crown size={12} className="text-yellow-400 fill-yellow-400" />}
+                                </div>
+                                <p className="text-xs text-cyan-400 line-clamp-1">
+                                    <Sparkles size={10} className="inline mr-1" />
+                                    {like.message || "Te envió un rompehielo"}
+                                </p>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onChatSelect({...like, action: 'approve'}); }}
+                                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full"
+                                >
+                                    Aprobar
+                                </button>
+                            </div>
+                        </motion.div>
+                    ))}
                 </div>
             </div>
         )}

@@ -80,6 +80,11 @@ func Setup(app *fiber.App) {
 	protected.Get("/matches", controllers.GetMatches)
 	protected.Delete("/matches/:id", controllers.DeleteMatch)
 
+	// --- ROMPEHIELOS (Icebreakers) ---
+	protected.Get("/icebreaker/info", controllers.GetIcebreakerInfo)
+	protected.Post("/icebreaker/activate-free", controllers.ActivateFreeIcebreakers)
+	protected.Get("/likes/pending", controllers.GetPendingLikes)
+
 	// --- MENSAJERIA ---
 	protected.Get("/messages/:id", controllers.GetMessages)
 	protected.Post("/messages", controllers.SendMessage)
@@ -115,6 +120,17 @@ func Setup(app *fiber.App) {
 	// Destellos
 	admin.Get("/flash/list", controllers.AdminListFlashes)
 	admin.Delete("/flash/delete", controllers.AdminDeleteFlash)
+
+	// Rompehielos
+	admin.Get("/rompehielos/list", controllers.AdminListRompehielos)
+	admin.Post("/rompehielos/approve", controllers.AdminApproveRompehielo)
+	admin.Post("/rompehielos/reject", controllers.AdminRejectRompehielo)
+	admin.Delete("/rompehielos/:id", controllers.AdminDeleteRompehielo)
+
+	// Likes
+	admin.Get("/likes/list", controllers.AdminListLikes)
+	admin.Delete("/likes/:id", controllers.AdminDeleteLike)
+	admin.Post("/rompehielos/update-inventory", controllers.AdminUpdateInventory)
 
 	// Usuarios
 	admin.Get("/users/suspended", controllers.GetSuspendedUsersAdmin)

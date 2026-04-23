@@ -6,7 +6,7 @@ import Link from "next/link";
 import { 
   LayoutDashboard, Users, Shield, AlertTriangle, CreditCard,
   Settings, Crown, FileText, ChevronDown, LogOut, Menu, X, 
-  Bell, Search, ChevronRight, Moon, Sun, Zap
+  Bell, Search, ChevronRight, Moon, Sun, Zap, Sparkles, Heart
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
@@ -28,13 +28,26 @@ const menuCategories = [
       { name: "Usuarios Eliminados", path: "/admin/users/deleted" }
     ]
   },
-  {
-    title: "DESTELLOS",
-    icon: Zap,
+{
+    title: "ROMPEHIELOS",
+    icon: Sparkles,
     items: [
-      { name: "Gestionar Destellos", path: "/admin/flashes" }
+      { name: "Gestionar Rompehielos", path: "/admin/rompehielos" }
     ]
   },
+  /*{
+    title: "MODERACIÓN",
+    icon: Shield,
+    items: [
+      { name: "Conversaciones", path: "/admin/moderation/conversations" },
+      { name: "Mensajes", path: "/admin/moderation/messages" },
+      { name: "Fotos y Media", path: "/admin/moderation/media" },
+      { name: "Matches", path: "/admin/moderation/matches" },
+      { name: "Comentarios", path: "/admin/moderation/comments" },
+      { name: "Posts", path: "/admin/moderation/posts" },
+      { name: "Contenido Marcado", path: "/admin/moderation/flagged" }
+    ]
+  },*/
   {
     title: "MODERACIÓN",
     icon: Shield,
@@ -42,6 +55,7 @@ const menuCategories = [
       { name: "Conversaciones", path: "/admin/moderation/conversations" },
       { name: "Mensajes", path: "/admin/moderation/messages" },
       { name: "Fotos y Media", path: "/admin/moderation/media" },
+      { name: "Likes", path: "/admin/likes" },
       { name: "Matches", path: "/admin/moderation/matches" },
       { name: "Comentarios", path: "/admin/moderation/comments" },
       { name: "Posts", path: "/admin/moderation/posts" },

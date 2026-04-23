@@ -86,7 +86,7 @@ func GetSocialFeed(c *fiber.Ctx) error {
 		posts[i].CommentsCount = commentCount
 
 		var like models.PostLike
-		if err := database.DB.Where("user_id = ? AND post_id = ?", myId, posts[i].ID).First(&like).Error; err == nil {
+		if database.DB.Where("user_id = ? AND post_id = ?", myId, posts[i].ID).Find(&like).RowsAffected > 0 {
 			posts[i].IsLiked = true
 		}
 
@@ -120,7 +120,7 @@ func GetSinglePost(c *fiber.Ctx) error {
 	post.CommentsCount = commentCount
 
 	var like models.PostLike
-	if err := database.DB.Where("user_id = ? AND post_id = ?", myId, post.ID).First(&like).Error; err == nil {
+	if database.DB.Where("user_id = ? AND post_id = ?", myId, post.ID).Find(&like).RowsAffected > 0 {
 		post.IsLiked = true
 	}
 
@@ -230,7 +230,7 @@ func GetUserPosts(c *fiber.Ctx) error {
 		posts[i].CommentsCount = commentCount
 
 		var like models.PostLike
-		if err := database.DB.Where("user_id = ? AND post_id = ?", myId, posts[i].ID).First(&like).Error; err == nil {
+		if database.DB.Where("user_id = ? AND post_id = ?", myId, posts[i].ID).Find(&like).RowsAffected > 0 {
 			posts[i].IsLiked = true
 		}
 	}
@@ -333,7 +333,7 @@ func GetPostComments(c *fiber.Ctx) error {
 		comments[i].LikesCount = count
 
 		var like models.CommentLike
-		if err := database.DB.Where("user_id = ? AND comment_id = ?", myId, comments[i].ID).First(&like).Error; err == nil {
+		if database.DB.Where("user_id = ? AND comment_id = ?", myId, comments[i].ID).Find(&like).RowsAffected > 0 {
 			comments[i].IsLiked = true
 		}
 

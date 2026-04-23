@@ -38,7 +38,7 @@ func GetFlashInfo(c *fiber.Ctx) error {
 	result := database.DB.Preload("User").
 		Where("user_id = ? AND ends_at > ?", userID, time.Now()).
 		Order("ends_at DESC").
-		First(&flash)
+		Find(&flash)
 
 	inventory := Inventory.GetUserInventory(userID)
 	if inventory == nil {
@@ -231,7 +231,7 @@ func IncrementReach(c *fiber.Ctx) error {
 	var flash models.Flash
 	result := database.DB.
 		Where("user_id = ? AND ends_at > ?", userID, time.Now()).
-		First(&flash)
+		Find(&flash)
 
 	if result.Error != nil {
 		return c.Status(404).JSON(map[string]string{"error": "No tienes un destello activo"})

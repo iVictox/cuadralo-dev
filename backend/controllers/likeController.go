@@ -3,6 +3,7 @@ package controllers
 import (
 	"cuadralo-backend/database"
 	"cuadralo-backend/models"
+	"fmt"
 	"log"
 	"time"
 
@@ -36,23 +37,24 @@ func Swipe(c *fiber.Ctx) error {
 
 	// ✅ FASE 3: Lógica de inventario para el Rompehielo
 	if input.Action == "rompehielo" {
-		inventory := Inventory.GetUserInventory(myId)
-		totalCount := inventory["flash"] + inventory["clasico"] + inventory["estelar"]
+		// Verificamos usando campos directos del usuario
+		totalCount := currentUser.FlashCount + currentUser.ClasicoCount + currentUser.EstelarCount
 		if totalCount <= 0 {
 			return c.Status(403).JSON(fiber.Map{
 				"error":          "Sin rompehielos",
 				"needs_purchase": true,
-				"message":        "Te has quedado sin Rompehielos. Visita la tienda para recargar tu arsenal.",
+				"message":        "Te has quedado sin Rompehielos. Activa gratis para probar.",
 			})
 		}
-		// Descontamos 1 rompehielo (consumible) - usa cualquiera disponible
-		if inventory["flash"] > 0 {
-			Inventory.RemoveItem(myId, models.ItemTypeFlash, 1)
-		} else if inventory["clasico"] > 0 {
-			Inventory.RemoveItem(myId, models.ItemTypeClasico, 1)
+		// Descontamos 1 rompehielo - usa cualquiera disponible
+		if currentUser.FlashCount > 0 {
+			currentUser.FlashCount--
+		} else if currentUser.ClasicoCount > 0 {
+			currentUser.ClasicoCount--
 		} else {
-			Inventory.RemoveItem(myId, models.ItemTypeEstelar, 1)
+			currentUser.EstelarCount--
 		}
+		database.DB.Save(&currentUser)
 	} else if input.Action == "right" {
 		// Límite diario para likes normales si no es Prime
 		if !currentUser.IsPrime {
@@ -327,4 +329,364 @@ func GetRompehielosRequests(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(pending)
+}
+
+// Get Icebreaker info - cantidad disponible
+func GetIcebreakerInfo(c *fiber.Ctx) error {
+	myId := uint(c.Locals("userId").(float64))
+
+	var user models.User
+	if err := database.DB.Select("flash_count, clasico_count, estelar_count").First(&user, myId).Error; err != nil {
+		return c.JSON(fiber.Map{"count": 0})
+	}
+
+	totalCount := user.FlashCount + user.ClasicoCount + user.EstelarCount
+
+	return c.JSON(fiber.Map{
+		"count": totalCount,
+	})
+}
+
+// Activar rompehielos gratis (para fase de prueba)
+func ActivateFreeIcebreakers(c *fiber.Ctx) error {
+	myId := uint(c.Locals("userId").(float64))
+
+	var user models.User
+	if err := database.DB.First(&user, myId).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Usuario no encontrado"})
+	}
+
+	// Agregar al campo existente del usuario
+	user.ClasicoCount += 5
+	if err := database.DB.Save(&user).Error; err != nil {
+		log.Printf("Error adding free icebreakers: %v", err)
+		return c.Status(500).JSON(fiber.Map{"error": "Error adding icebreakers"})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"count":   5,
+	})
+}
+
+// Get Pending Likes - para sección "Le Gustas"
+func GetPendingLikes(c *fiber.Ctx) error {
+	myId := uint(c.Locals("userId").(float64))
+
+	var likes []models.Like
+	database.DB.Where("to_user_id = ? AND action IN ('right', 'rompehielo')", myId).Find(&likes)
+
+	var mySwipes []models.Like
+	database.DB.Where("from_user_id = ?", myId).Find(&mySwipes)
+
+	swipedMap := make(map[uint]bool)
+	for _, s := range mySwipes {
+		swipedMap[s.ToUserID] = true
+	}
+
+	var pendingIDs []uint
+	for _, l := range likes {
+		if !swipedMap[l.FromUserID] {
+			pendingIDs = append(pendingIDs, l.FromUserID)
+		}
+	}
+
+	if len(pendingIDs) == 0 {
+		return c.JSON([]fiber.Map{})
+	}
+
+	var users []models.User
+	database.DB.Where("id IN ?", pendingIDs).Find(&users)
+
+	response := []fiber.Map{}
+	now := time.Now()
+
+	for _, u := range users {
+		byLikes := false
+		for _, l := range likes {
+			if l.FromUserID == u.ID && l.Action == "right" {
+				byLikes = true
+				break
+			}
+		}
+
+		var message string
+		for _, l := range likes {
+			if l.FromUserID == u.ID && l.Action == "rompehielo" {
+				message = l.Message
+				break
+			}
+		}
+		_ = byLikes // unused
+
+		age := now.Year() - u.BirthDate.Year()
+		if now.Month() < u.BirthDate.Month() || (now.Month() == u.BirthDate.Month() && now.Day() < u.BirthDate.Day()) {
+			age--
+		}
+
+		item := fiber.Map{
+			"id":        u.ID,
+			"name":      u.Name,
+			"age":       age,
+			"img":       u.Photo,
+			"photo":    u.Photo,
+			"is_prime": u.IsPrime,
+			"message":  message,
+			"is_icebreaker": message != "",
+		}
+		response = append(response, item)
+	}
+
+	return c.JSON(response)
+}
+
+// Admin: Listar todos los rompehielos
+func AdminListRompehielos(c *fiber.Ctx) error {
+	filter := c.Query("filter", "all")
+	search := c.Query("search", "")
+
+	query := database.DB.Model(&models.Like{}).Where("action = 'rompehielo'")
+
+	if filter == "pending" {
+		query = query.Where("status = 'pending' OR status IS NULL")
+	} else if filter == "approved" {
+		query = query.Where("status = 'approved'")
+	} else if filter == "rejected" {
+		query = query.Where("status = 'rejected'")
+	}
+
+	// Buscar por mensaje, from_user_id, to_user_id, o nombre de usuario
+	if search != "" {
+		var searchNum uint
+		fmt.Sscanf(search, "%d", &searchNum)
+		
+		if searchNum > 0 {
+			query = query.Where("from_user_id = ? OR to_user_id = ?", searchNum, searchNum)
+		} else {
+			// Buscar primero IDs de usuarios que coincidan con el nombre/search
+			var users []models.User
+			database.DB.Where("name ILIKE ? OR username ILIKE ?", "%"+search+"%", "%"+search+"%").Select("id").Find(&users)
+			
+			var userIDs []uint
+			for _, u := range users {
+				userIDs = append(userIDs, u.ID)
+			}
+			
+			if len(userIDs) > 0 {
+				query = query.Where("from_user_id IN ? OR to_user_id IN ?", userIDs, userIDs)
+			} else {
+				// Si no hay usuarios, buscar por mensaje
+				query = query.Where("message ILIKE ?", "%"+search+"%")
+			}
+		}
+	}
+
+	var rompehielos []models.Like
+	query.Order("created_at DESC").Find(&rompehielos)
+
+	type RompehieloResponse struct {
+		ID         uint      `json:"id"`
+		FromUserID uint     `json:"from_user_id"`
+		ToUserID  uint     `json:"to_user_id"`
+		Message   string   `json:"message"`
+		Type      string   `json:"type"`
+		Status    string   `json:"status"`
+		CreatedAt time.Time `json:"created_at"`
+	}
+
+	response := []RompehieloResponse{}
+	for _, r := range rompehielos {
+		response = append(response, RompehieloResponse{
+			ID:         r.ID,
+			FromUserID: r.FromUserID,
+			ToUserID:  r.ToUserID,
+			Message:   r.Message,
+			Type:      "rompehielo",
+			Status:    r.Status,
+			CreatedAt: r.CreatedAt,
+		})
+	}
+
+	stats := fiber.Map{
+		"total":    len(response),
+		"pending": 0,
+		"approved": 0,
+		"rejected": 0,
+	}
+
+	return c.JSON(fiber.Map{
+		"rompehielos": response,
+		"stats":     stats,
+	})
+}
+
+type RompehieloActionInput struct {
+	ID uint `json:"id"`
+}
+
+// Admin: Aprobar rompehielo
+func AdminApproveRompehielo(c *fiber.Ctx) error {
+	var input RompehieloActionInput
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+	}
+
+	database.DB.Model(&models.Like{}).Where("id = ?", input.ID).Update("status", "approved")
+
+	return c.JSON(fiber.Map{"success": true})
+}
+
+// Admin: Rechazar rompehielo
+func AdminRejectRompehielo(c *fiber.Ctx) error {
+	var input RompehieloActionInput
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+	}
+
+	database.DB.Model(&models.Like{}).Where("id = ?", input.ID).Update("status", "rejected")
+
+	return c.JSON(fiber.Map{"success": true})
+}
+
+// Admin: Eliminar rompehielo
+func AdminDeleteRompehielo(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "ID inválido"})
+	}
+
+	result := database.DB.Delete(&models.Like{}, id)
+	if result.Error != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Error al eliminar"})
+	}
+
+	return c.JSON(fiber.Map{"success": true})
+}
+
+type UpdateInventoryInput struct {
+	UserID uint   `json:"user_id"`
+	Type   string `json:"type"`
+	Amount int    `json:"amount"`
+}
+
+// Admin: Actualizar inventario de rompehielos de un usuario
+func AdminUpdateInventory(c *fiber.Ctx) error {
+	var input UpdateInventoryInput
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, input.UserID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Usuario no encontrado"})
+	}
+
+	switch input.Type {
+	case "flash":
+		user.FlashCount += input.Amount
+	case "clasico":
+		user.ClasicoCount += input.Amount
+	case "estelar":
+		user.EstelarCount += input.Amount
+	}
+
+	if user.FlashCount < 0 {
+		user.FlashCount = 0
+	}
+	if user.ClasicoCount < 0 {
+		user.ClasicoCount = 0
+	}
+	if user.EstelarCount < 0 {
+		user.EstelarCount = 0
+	}
+
+	database.DB.Save(&user)
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"flash":   user.FlashCount,
+		"clasico": user.ClasicoCount,
+		"estelar": user.EstelarCount,
+	})
+}
+
+// Admin: Listar todos los likes
+func AdminListLikes(c *fiber.Ctx) error {
+	search := c.Query("search", "")
+
+	query := database.DB.Model(&models.Like{})
+
+	// Filtrar por right, left, o rompehielo
+	query = query.Where("action IN ('right', 'left', 'rompehielo')")
+
+	// Buscar por ID, nombre, username, o mensaje
+	if search != "" {
+		var searchNum uint
+		fmt.Sscanf(search, "%d", &searchNum)
+		
+		if searchNum > 0 {
+			query = query.Where("from_user_id = ? OR to_user_id = ?", searchNum, searchNum)
+		} else {
+			// Buscar IDs de usuarios que coincidan con el nombre
+			var users []models.User
+			database.DB.Where("name ILIKE ? OR username ILIKE ?", "%"+search+"%", "%"+search+"%").Select("id").Find(&users)
+			
+			var userIDs []uint
+			for _, u := range users {
+				userIDs = append(userIDs, u.ID)
+			}
+			
+			if len(userIDs) > 0 {
+				query = query.Where("from_user_id IN ? OR to_user_id IN ?", userIDs, userIDs)
+			} else {
+				query = query.Where("message ILIKE ?", "%"+search+"%")
+			}
+		}
+	}
+
+	var likes []models.Like
+	query.Order("created_at DESC").Limit(200).Find(&likes)
+
+	type LikeResponse struct {
+		ID         uint      `json:"id"`
+		FromUserID uint     `json:"from_user_id"`
+		ToUserID  uint     `json:"to_user_id"`
+		Action    string   `json:"action"`
+		Message   string   `json:"message"`
+		Status    string   `json:"status"`
+		CreatedAt time.Time `json:"created_at"`
+	}
+
+	response := []LikeResponse{}
+	for _, l := range likes {
+		response = append(response, LikeResponse{
+			ID:         l.ID,
+			FromUserID: l.FromUserID,
+			ToUserID:  l.ToUserID,
+			Action:    l.Action,
+			Message:   l.Message,
+			Status:    l.Status,
+			CreatedAt: l.CreatedAt,
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"likes": response,
+		"total": len(response),
+	})
+}
+
+// Admin: Eliminar like
+func AdminDeleteLike(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "ID inválido"})
+	}
+
+	result := database.DB.Delete(&models.Like{}, id)
+	if result.Error != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Error al eliminar"})
+	}
+
+	return c.JSON(fiber.Map{"success": true})
 }
