@@ -63,6 +63,10 @@ type User struct {
 	TwoFactorEnabled bool   `json:"two_factor_enabled" gorm:"default:false"`
 	TwoFactorSecret  string `json:"-"`
 
+	IsVerified              bool       `json:"is_verified" gorm:"default:false"`
+	VerificationBadge       string     `json:"verification_badge" gorm:"default:'none'"`
+	LastVerificationAttempt *time.Time `json:"last_verification_attempt"`
+
 	IsPrime        bool      `json:"is_prime" gorm:"default:false"`
 	PrimeExpiresAt time.Time `json:"prime_expires_at"`
 	IsBoosted      bool      `json:"is_boosted" gorm:"default:false"`
@@ -73,7 +77,7 @@ type User struct {
 	ClasicoCount     int       `json:"clasico_count" gorm:"default:0"`
 	EstelarCount     int       `json:"estelar_count" gorm:"default:0"`
 	DailyLikes       int       `json:"daily_likes" gorm:"default:0"`
-	RompehielosCount int       `json:"rompehielos_count" gorm:"default:0"` // 100% INDEPENDIENTE Y DESVINCULADO
+	RompehielosCount int       `json:"rompehielos_count" gorm:"default:0"` // Transformado a un campo real
 	LastLikeDate     time.Time `json:"last_like_date"`
 
 	IsFollowing    bool `gorm:"-" json:"is_following"`

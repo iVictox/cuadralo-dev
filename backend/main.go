@@ -36,6 +36,7 @@ func main() {
 		&models.Report{},      // Reportes de usuarios, posts y comentarios
 		&models.PasswordReset{}, // Recuperación de contraseña
 		&models.Flash{},      // Destellos para boost de apariciones
+		&models.VerificationHistory{}, // Historial de verificaciones
 	)
 
 	// 3. Iniciar Hub de WebSockets (en segundo plano)

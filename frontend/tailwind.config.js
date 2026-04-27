@@ -16,13 +16,13 @@ module.exports = {
           purple: "#551CA6",
           purpleLight: "#7c3aed",
           // ✅ PALETA DE ALTO CONTRASTE (Color Theory)
-          bgLight: "#F8FAFC",   // Blanco Humo/Pizarra 50: No quema la vista.
+          bgLight: "#FCFAFF",   // Blanco tintado sutilmente con morado/rosa
           bgDark: "#0B0410",    // Morado espacial ultra oscuro.
-          cardLight: "#FFFFFF", // Blanco puro para resaltar sobre bgLight.
+          cardLight: "#FFFFFF", // Blanco puro.
           cardDark: "#150A21",  
-          textLight: "#0F172A", // Pizarra 900: Casi negro, máxima lectura.
+          textLight: "#1F112E", // Morado/negro muy oscuro para lectura cálida y premium.
           textDark: "#F8FAFC",  
-          textMutedLight: "#334155", // Pizarra 700: Gris oscuro elegante para descripciones.
+          textMutedLight: "#857596", // Gris violáceo para descripciones.
           textMutedDark: "#94A3B8",  
         },
       },

@@ -79,7 +79,15 @@ func HandleWebSocket(c *websocket.Conn) {
 				MessageID uint `json:"message_id"`
 			}
 			json.Unmarshal(incoming.Payload, &payload)
-			database.DB.Model(&models.Message{}).Where("id = ?", payload.MessageID).Update("is_viewed", true)
+			
+			var msgObj models.Message
+			if err := database.DB.First(&msgObj, payload.MessageID).Error; err == nil {
+				database.DB.Model(&msgObj).Update("is_viewed", true)
+				// Notificar al remitente que la foto fue abierta
+				websockets.SendToUser(strconv.Itoa(int(msgObj.SenderID)), "message_viewed", map[string]interface{}{
+					"message_id": msgObj.ID,
+				})
+			}
 
 		case "save_message":
 			var payload struct {

@@ -4,6 +4,7 @@ import (
 	"cuadralo-backend/database"
 	"cuadralo-backend/models"
 	"cuadralo-backend/websockets" // ✅ IMPORTADO
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -12,6 +13,7 @@ import (
 type ChatPreviewDTO struct {
 	ID          uint      `json:"id"`
 	Name        string    `json:"name"`
+	Username    string    `json:"username"`
 	Photo       string    `json:"photo"`
 	LastMessage string    `json:"last_message"`
 	LastTime    time.Time `json:"last_message_time"`
@@ -58,6 +60,7 @@ func GetMatches(c *fiber.Ctx) error {
 		dto := ChatPreviewDTO{
 			ID:          f.ID,
 			Name:        f.Name,
+			Username:    f.Username,
 			Photo:       f.Photo,
 			UnreadCount: unread,
 		}
@@ -148,8 +151,8 @@ func SendMessage(c *fiber.Ctx) error {
 	}
 
 	msgType := "text"
-	if data.Type == "image" {
-		msgType = "image"
+	if data.Type == "image" || data.Type == "image_once" {
+		msgType = data.Type
 	}
 
 	msg := models.Message{
@@ -179,6 +182,7 @@ func SendMessage(c *fiber.Ctx) error {
 
 func ToggleMessageSave(c *fiber.Ctx) error {
 	msgId := c.Params("id")
+	myId := uint(c.Locals("userId").(float64))
 
 	var msg models.Message
 	if err := database.DB.First(&msg, msgId).Error; err != nil {
@@ -187,6 +191,19 @@ func ToggleMessageSave(c *fiber.Ctx) error {
 
 	msg.Saved = !msg.Saved
 	database.DB.Save(&msg)
+
+	// Notificar a la otra persona que el mensaje fue guardado o desguardado
+	targetId := msg.ReceiverID
+	if msg.ReceiverID == myId {
+		targetId = msg.SenderID
+	}
+
+	websockets.SendToUser(fmt.Sprintf("%d", targetId), "message_saved", map[string]interface{}{
+		"message_id": msg.ID,
+		"saved":      msg.Saved,
+		"chat_id":    myId,
+	})
+
 	return c.JSON(fiber.Map{"saved": msg.Saved, "message": "Estado actualizado"})
 }
 
@@ -194,13 +211,22 @@ func DeleteMessage(c *fiber.Ctx) error {
 	myId := uint(c.Locals("userId").(float64))
 	msgId := c.Params("id")
 
-	result := database.DB.Where("id = ? AND sender_id = ?", msgId, myId).Delete(&models.Message{})
-
-	if result.RowsAffected == 0 {
+	var msg models.Message
+	if err := database.DB.Where("id = ? AND sender_id = ?", msgId, myId).First(&msg).Error; err != nil {
 		return c.Status(403).JSON(fiber.Map{"error": "No puedes borrar este mensaje"})
 	}
 
-	return c.JSON(fiber.Map{"message": "Eliminado"})
+	msg.IsDeleted = true
+	msg.Content = "" // Limpiar el contenido por privacidad
+	database.DB.Save(&msg)
+
+	// Emitir websocket para que el otro usuario lo vea como eliminado en vivo
+	websockets.SendToUser(fmt.Sprintf("%d", msg.ReceiverID), "message_deleted", map[string]interface{}{
+		"message_id": msg.ID,
+		"chat_id":    myId,
+	})
+
+	return c.JSON(fiber.Map{"message": "Eliminado", "id": msg.ID})
 }
 
 func GetMessages(c *fiber.Ctx) error {

@@ -224,6 +224,7 @@ func GetDeletedUsersAdmin(c *fiber.Ctx) error {
 	offset := (page - 1) * limit
 	search := c.Query("search", "")
 
+	// Unscoped() permite buscar registros que tienen DeletedAt lleno
 	query := database.DB.Unscoped().Model(&models.User{}).Where("deleted_at IS NOT NULL")
 	if search != "" {
 		query = query.Where("(name ILIKE ? OR username ILIKE ? OR id::text = ?)", "%"+search+"%", "%"+search+"%", search)
@@ -243,6 +244,7 @@ func RestoreDeletedUser(c *fiber.Ctx) error {
 	userID := c.Params("id")
 	adminID := uint(c.Locals("userId").(float64))
 
+	// Hacemos Update a nil para limpiarlo de la papelera
 	if err := database.DB.Unscoped().Model(&models.User{}).Where("id = ?", userID).Update("deleted_at", nil).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "No se pudo restaurar el usuario"})
 	}
@@ -268,6 +270,7 @@ func ForceDeleteUser(c *fiber.Ctx) error {
 		return c.Status(403).JSON(fiber.Map{"error": "No puedes purgar a un SuperAdministrador."})
 	}
 
+	// Unscoped Delete lo borra FÍSICAMENTE de la base de datos para siempre
 	database.DB.Unscoped().Delete(&user)
 
 	var targetID = user.ID
@@ -626,8 +629,9 @@ func VerifyPayment(c *fiber.Ctx) error {
 
 	if payload.Action == "verify" {
 		payment.Status = "approved"
+		fmt.Printf("[VERIFY PAYMENT] Processing payment ID: %d, UserID: %d, ItemType: %s, FlashQty: %d, FlashType: %s\n",
+			payment.ID, payment.UserID, payment.ItemType, payment.FlashQty, payment.FlashType)
 
-		// 1. Lógica VIP
 		if payment.ItemType == "vip" || payment.ItemType == "prime" || payload.GrantVIP {
 			database.DB.Model(&models.User{}).Where("id = ?", payment.UserID).Updates(map[string]interface{}{
 				"is_prime":         true,
@@ -643,18 +647,13 @@ func VerifyPayment(c *fiber.Ctx) error {
 				CreatedAt: time.Now(),
 			})
 		}
-
-		// 2. Lógica Items (Destellos y Rompehielos)
-		if payment.FlashQty > 0 || payment.ItemType == "flash" || strings.HasPrefix(payment.ItemType, "flash_") || payment.ItemType == "rompehielos" {
+		if payment.FlashQty > 0 || payment.ItemType == "flash" || payment.ItemType == "rompehielos" || strings.HasPrefix(payment.ItemType, "flash_") {
 			flashQty := payment.FlashQty
 			if flashQty <= 0 {
 				flashQty = 1
 			}
-
 			flashType := payment.FlashType
-
-			// FORZAMOS LA IDENTIFICACION PARA EVITAR EL CASTING A CLASICO
-			if payment.ItemType == "rompehielos" || strings.ToLower(payment.ItemType) == "rompehielos" {
+			if payment.ItemType == "rompehielos" {
 				flashType = "rompehielos"
 			} else if flashType == "" {
 				if strings.HasPrefix(payment.ItemType, "flash_") {
@@ -664,50 +663,45 @@ func VerifyPayment(c *fiber.Ctx) error {
 				}
 			}
 
-			var userToUpdate models.User
-			if err := database.DB.First(&userToUpdate, payment.UserID).Error; err == nil {
-				// AISLAMIENTO TOTAL DE ROMPEHIELOS DEL SISTEMA DE DESTELLOS
-				if flashType == "rompehielos" {
-					// Actualizamos directamente al usuario y saltamos Inventory.AddItem por completo
-					database.DB.Model(&userToUpdate).Update("rompehielos_count", userToUpdate.RompehielosCount+flashQty)
-				} else {
-					// Si es un destello normal, usamos el helper clásico
-					itemType := models.ItemType(flashType)
-					if err := Inventory.AddItem(payment.UserID, itemType, flashQty); err == nil {
-						if flashType == "flash" {
-							database.DB.Model(&userToUpdate).Update("flash_count", userToUpdate.FlashCount+flashQty)
-						} else if flashType == "clasico" {
-							database.DB.Model(&userToUpdate).Update("clasico_count", userToUpdate.ClasicoCount+flashQty)
-						} else if flashType == "estelar" {
-							database.DB.Model(&userToUpdate).Update("estelar_count", userToUpdate.EstelarCount+flashQty)
-						}
-					}
-				}
+			fmt.Printf("[VERIFY INVENTORY] Adding %d item de tipo %s al usuario %d\n", flashQty, flashType, payment.UserID)
+
+			itemType := models.ItemType(flashType)
+			if err := Inventory.AddItem(payment.UserID, itemType, flashQty); err != nil {
+				fmt.Printf("[VERIFY ERROR] AddItem failed: %v\n", err)
+			} else {
+				inventory := Inventory.GetUserInventory(payment.UserID)
+				fmt.Printf("[VERIFY SUCCESS] User inventory: %+v\n", inventory)
 			}
 
-			// Notificación Diferenciada
-			title := "¡Destellos acreditados!"
-			bodyMsg := fmt.Sprintf("Se han acreditado %d destellos %s a tu cuenta. ¡Actívalos y destaca!", flashQty, flashType)
-			notifType := "flash_purchased"
-
-			if flashType == "rompehielos" {
-				title = "¡Rompehielos acreditados!"
-				bodyMsg = fmt.Sprintf("Se han acreditado %d rompehielos a tu cuenta. ¡Empieza a conectar!", flashQty)
-				notifType = "rompehielos_purchased"
+			// Actualizar base de datos de usuario con el recuento para no perder sincronía
+			var u models.User
+			if err := database.DB.First(&u, payment.UserID).Error; err == nil {
+				if flashType == "flash" {
+					u.FlashCount += flashQty
+				}
+				if flashType == "clasico" {
+					u.ClasicoCount += flashQty
+				}
+				if flashType == "estelar" {
+					u.EstelarCount += flashQty
+				}
+				if flashType == "rompehielos" {
+					u.RompehielosCount += flashQty
+				}
+				database.DB.Save(&u)
 			}
 
 			notification := models.Notification{
 				UserID:   payment.UserID,
 				SenderID: payment.UserID,
-				Type:     notifType,
-				Title:    title,
-				Body:     bodyMsg,
+				Type:     "flash_purchased",
+				Title:    "¡Inventario acreditado!",
+				Body:     fmt.Sprintf("Se han acreditado %d items %s a tu cuenta. ¡Actívalos y destaca!", flashQty, flashType),
 				IsRead:   false,
 			}
 			database.DB.Create(&notification)
 			websockets.SendToUser(fmt.Sprintf("%d", payment.UserID), "new_notification", notification)
 		}
-
 	} else if payload.Action == "reject" {
 		payment.Status = "rejected"
 	} else if payload.Action == "pending" {
@@ -748,7 +742,6 @@ func DeleteUserAdmin(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Usuario enviado a la papelera."})
 }
 
-// CORRECCIÓN REALIZADA AQUÍ (c *fiber.Ctx en lugar de c *Ctx)
 func GetUserReportsAdmin(c *fiber.Ctx) error {
 	var reports []models.Report
 	if err := database.DB.Preload("Reporter").Preload("ReportedUser").
@@ -920,7 +913,6 @@ func AdminGetInventoryPage(c *fiber.Ctx) error {
 			EstelarCount:     u.EstelarCount,
 			RompehielosCount: u.RompehielosCount,
 		}
-
 		response = append(response, summary)
 	}
 
@@ -964,22 +956,19 @@ func AdminAddInventoryItem(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Usuario no encontrado"})
 	}
 
-	// AISLAMIENTO TOTAL EN LA ADICION MANUAL
-	if payload.ItemType == "rompehielos" {
-		database.DB.Model(&user).Update("rompehielos_count", user.RompehielosCount+payload.Count)
-	} else {
-		itemType := models.ItemType(payload.ItemType)
-		if err := Inventory.AddItem(payload.UserID, itemType, payload.Count); err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": "Error al agregar item al inventario"})
-		}
+	itemType := models.ItemType(payload.ItemType)
+	if err := Inventory.AddItem(payload.UserID, itemType, payload.Count); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Error al agregar item al inventario"})
+	}
 
-		if payload.ItemType == "flash" {
-			database.DB.Model(&user).Update("flash_count", user.FlashCount+payload.Count)
-		} else if payload.ItemType == "clasico" {
-			database.DB.Model(&user).Update("clasico_count", user.ClasicoCount+payload.Count)
-		} else if payload.ItemType == "estelar" {
-			database.DB.Model(&user).Update("estelar_count", user.EstelarCount+payload.Count)
-		}
+	if payload.ItemType == "flash" {
+		database.DB.Model(&user).Update("flash_count", user.FlashCount+payload.Count)
+	} else if payload.ItemType == "clasico" {
+		database.DB.Model(&user).Update("clasico_count", user.ClasicoCount+payload.Count)
+	} else if payload.ItemType == "estelar" {
+		database.DB.Model(&user).Update("estelar_count", user.EstelarCount+payload.Count)
+	} else if payload.ItemType == "rompehielos" {
+		database.DB.Model(&user).Update("rompehielos_count", user.RompehielosCount+payload.Count)
 	}
 
 	LogAdminAction(adminID, "add_inventory_item", &payload.UserID,
@@ -1020,22 +1009,19 @@ func AdminRemoveInventoryItem(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Usuario no encontrado"})
 	}
 
-	// AISLAMIENTO TOTAL EN LA EXTRACCION MANUAL
-	if payload.ItemType == "rompehielos" {
-		database.DB.Model(&user).Update("rompehielos_count", max(0, user.RompehielosCount-payload.Count))
-	} else {
-		itemType := models.ItemType(payload.ItemType)
-		if err := Inventory.RemoveItem(payload.UserID, itemType, payload.Count); err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": "Error al remover item del inventario"})
-		}
+	itemType := models.ItemType(payload.ItemType)
+	if err := Inventory.RemoveItem(payload.UserID, itemType, payload.Count); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Error al remover item del inventario"})
+	}
 
-		if payload.ItemType == "flash" {
-			database.DB.Model(&user).Update("flash_count", max(0, user.FlashCount-payload.Count))
-		} else if payload.ItemType == "clasico" {
-			database.DB.Model(&user).Update("clasico_count", max(0, user.ClasicoCount-payload.Count))
-		} else if payload.ItemType == "estelar" {
-			database.DB.Model(&user).Update("estelar_count", max(0, user.EstelarCount-payload.Count))
-		}
+	if payload.ItemType == "flash" {
+		database.DB.Model(&user).Update("flash_count", max(0, user.FlashCount-payload.Count))
+	} else if payload.ItemType == "clasico" {
+		database.DB.Model(&user).Update("clasico_count", max(0, user.ClasicoCount-payload.Count))
+	} else if payload.ItemType == "estelar" {
+		database.DB.Model(&user).Update("estelar_count", max(0, user.EstelarCount-payload.Count))
+	} else if payload.ItemType == "rompehielos" {
+		database.DB.Model(&user).Update("rompehielos_count", max(0, user.RompehielosCount-payload.Count))
 	}
 
 	LogAdminAction(adminID, "remove_inventory_item", &payload.UserID,
@@ -1074,9 +1060,6 @@ func AdminGetUserInventory(c *fiber.Ctx) error {
 	for itemType, count := range inventory {
 		items = append(items, InventoryItemResponse{ItemType: itemType, Count: count})
 	}
-
-	// AÑADIMOS MANUALMENTE LOS ROMPEHIELOS A LA RESPUESTA PARA EL MODAL ADMIN
-	items = append(items, InventoryItemResponse{ItemType: "rompehielos", Count: user.RompehielosCount})
 
 	return c.JSON(fiber.Map{
 		"user_id":    user.ID,

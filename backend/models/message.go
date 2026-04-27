@@ -20,4 +20,5 @@ type Message struct {
 	CreatedAt time.Time `json:"created_at"`
 	ExpiresAt time.Time `json:"expires_at"`
 	Saved     bool      `json:"saved" gorm:"default:false"`
+	IsDeleted bool      `json:"is_deleted" gorm:"default:false"` // Para indicar "El mensaje fue eliminado"
 }

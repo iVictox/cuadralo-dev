@@ -29,6 +29,7 @@ func Setup(app *fiber.App) {
 	protected.Use(middleware.IsAuthenticated)
 
 	protected.Post("/user/admin-request", controllers.RequestAdminRole)
+	protected.Post("/user/verify-face", controllers.VerifyFace)
 
 	// --- FUNCIONES DE USUARIO ---
 	protected.Get("/search", controllers.SearchUsers)
@@ -138,6 +139,12 @@ func Setup(app *fiber.App) {
 	admin.Get("/users", controllers.GetAllUsersAdmin)
 	admin.Put("/users/:id/suspend", controllers.SuspendUser)
 	admin.Put("/users/:id/restore", controllers.RestoreDeletedUser)
+
+	// Verificaciones
+	admin.Get("/verifications", controllers.AdminListVerifications)
+	admin.Put("/verifications/:id/approve", controllers.AdminApproveVerification)
+	admin.Put("/verifications/:id/reject", controllers.AdminRejectVerification)
+	admin.Put("/verifications/user/:id/reset-lock", controllers.AdminResetVerificationLock)
 
 	// Pagos y VIP
 	admin.Get("/payments", controllers.GetAllPaymentsAdmin)

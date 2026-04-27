@@ -37,24 +37,17 @@ func Swipe(c *fiber.Ctx) error {
 
 	// ✅ FASE 3: Lógica de inventario para el Rompehielo
 	if input.Action == "rompehielo" {
-		// Verificamos usando campos directos del usuario
-		totalCount := currentUser.FlashCount + currentUser.ClasicoCount + currentUser.EstelarCount
-		if totalCount <= 0 {
+		if currentUser.RompehielosCount <= 0 {
 			return c.Status(403).JSON(fiber.Map{
 				"error":          "Sin rompehielos",
 				"needs_purchase": true,
 				"message":        "Te has quedado sin Rompehielos. Activa gratis para probar.",
 			})
 		}
-		// Descontamos 1 rompehielo - usa cualquiera disponible
-		if currentUser.FlashCount > 0 {
-			currentUser.FlashCount--
-		} else if currentUser.ClasicoCount > 0 {
-			currentUser.ClasicoCount--
-		} else {
-			currentUser.EstelarCount--
-		}
+		// Descontamos 1 rompehielo independiente
+		currentUser.RompehielosCount--
 		database.DB.Save(&currentUser)
+		Inventory.RemoveItem(myId, models.ItemTypeRompehielos, 1)
 	} else if input.Action == "right" {
 		// Límite diario para likes normales si no es Prime
 		if !currentUser.IsPrime {
@@ -101,7 +94,7 @@ func Swipe(c *fiber.Ctx) error {
 			match := models.Match{User1ID: myId, User2ID: input.TargetID}
 			database.DB.Create(&match)
 
-            // Disparar notificación de Match para la otra persona
+			// Disparar notificación de Match para la otra persona
 			CreateAndBroadcastNotification(
 				input.TargetID,
 				myId,
@@ -110,15 +103,15 @@ func Swipe(c *fiber.Ctx) error {
 				"¡Tienen un nuevo Match! Comienza a chatear.",
 			)
 		} else {
-            // Si no hay match, le mandamos una notificación de "Recibiste un like" a la persona (Swipe Like)
-            CreateAndBroadcastNotification(
-                input.TargetID,
-                myId,
-                "swipe_like",
-                nil,
-                "le diste curiosidad a alguien. ¡Averigua quién es!",
-            )
-        }
+			// Si no hay match, le mandamos una notificación de "Recibiste un like" a la persona (Swipe Like)
+			CreateAndBroadcastNotification(
+				input.TargetID,
+				myId,
+				"swipe_like",
+				nil,
+				"le diste curiosidad a alguien. ¡Averigua quién es!",
+			)
+		}
 	}
 	return c.JSON(fiber.Map{"message": "Interacción registrada", "match": isMatch})
 }
@@ -336,14 +329,12 @@ func GetIcebreakerInfo(c *fiber.Ctx) error {
 	myId := uint(c.Locals("userId").(float64))
 
 	var user models.User
-	if err := database.DB.Select("flash_count, clasico_count, estelar_count").First(&user, myId).Error; err != nil {
+	if err := database.DB.Select("rompehielos_count").First(&user, myId).Error; err != nil {
 		return c.JSON(fiber.Map{"count": 0})
 	}
 
-	totalCount := user.FlashCount + user.ClasicoCount + user.EstelarCount
-
 	return c.JSON(fiber.Map{
-		"count": totalCount,
+		"count": user.RompehielosCount,
 	})
 }
 
@@ -356,12 +347,14 @@ func ActivateFreeIcebreakers(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Usuario no encontrado"})
 	}
 
-	// Agregar al campo existente del usuario
-	user.ClasicoCount += 5
+	// Agregar al campo específico y único del usuario
+	user.RompehielosCount += 5
 	if err := database.DB.Save(&user).Error; err != nil {
 		log.Printf("Error adding free icebreakers: %v", err)
 		return c.Status(500).JSON(fiber.Map{"error": "Error adding icebreakers"})
 	}
+
+	Inventory.AddItem(myId, models.ItemTypeRompehielos, 5)
 
 	return c.JSON(fiber.Map{
 		"success": true,
@@ -425,13 +418,13 @@ func GetPendingLikes(c *fiber.Ctx) error {
 		}
 
 		item := fiber.Map{
-			"id":        u.ID,
-			"name":      u.Name,
-			"age":       age,
-			"img":       u.Photo,
-			"photo":    u.Photo,
-			"is_prime": u.IsPrime,
-			"message":  message,
+			"id":            u.ID,
+			"name":          u.Name,
+			"age":           age,
+			"img":           u.Photo,
+			"photo":         u.Photo,
+			"is_prime":      u.IsPrime,
+			"message":       message,
 			"is_icebreaker": message != "",
 		}
 		response = append(response, item)
@@ -459,19 +452,19 @@ func AdminListRompehielos(c *fiber.Ctx) error {
 	if search != "" {
 		var searchNum uint
 		fmt.Sscanf(search, "%d", &searchNum)
-		
+
 		if searchNum > 0 {
 			query = query.Where("from_user_id = ? OR to_user_id = ?", searchNum, searchNum)
 		} else {
 			// Buscar primero IDs de usuarios que coincidan con el nombre/search
 			var users []models.User
 			database.DB.Where("name ILIKE ? OR username ILIKE ?", "%"+search+"%", "%"+search+"%").Select("id").Find(&users)
-			
+
 			var userIDs []uint
 			for _, u := range users {
 				userIDs = append(userIDs, u.ID)
 			}
-			
+
 			if len(userIDs) > 0 {
 				query = query.Where("from_user_id IN ? OR to_user_id IN ?", userIDs, userIDs)
 			} else {
@@ -486,12 +479,12 @@ func AdminListRompehielos(c *fiber.Ctx) error {
 
 	type RompehieloResponse struct {
 		ID         uint      `json:"id"`
-		FromUserID uint     `json:"from_user_id"`
-		ToUserID  uint     `json:"to_user_id"`
-		Message   string   `json:"message"`
-		Type      string   `json:"type"`
-		Status    string   `json:"status"`
-		CreatedAt time.Time `json:"created_at"`
+		FromUserID uint      `json:"from_user_id"`
+		ToUserID   uint      `json:"to_user_id"`
+		Message    string    `json:"message"`
+		Type       string    `json:"type"`
+		Status     string    `json:"status"`
+		CreatedAt  time.Time `json:"created_at"`
 	}
 
 	response := []RompehieloResponse{}
@@ -499,24 +492,24 @@ func AdminListRompehielos(c *fiber.Ctx) error {
 		response = append(response, RompehieloResponse{
 			ID:         r.ID,
 			FromUserID: r.FromUserID,
-			ToUserID:  r.ToUserID,
-			Message:   r.Message,
-			Type:      "rompehielo",
-			Status:    r.Status,
-			CreatedAt: r.CreatedAt,
+			ToUserID:   r.ToUserID,
+			Message:    r.Message,
+			Type:       "rompehielo",
+			Status:     r.Status,
+			CreatedAt:  r.CreatedAt,
 		})
 	}
 
 	stats := fiber.Map{
 		"total":    len(response),
-		"pending": 0,
+		"pending":  0,
 		"approved": 0,
 		"rejected": 0,
 	}
 
 	return c.JSON(fiber.Map{
 		"rompehielos": response,
-		"stats":     stats,
+		"stats":       stats,
 	})
 }
 
@@ -588,6 +581,8 @@ func AdminUpdateInventory(c *fiber.Ctx) error {
 		user.ClasicoCount += input.Amount
 	case "estelar":
 		user.EstelarCount += input.Amount
+	case "rompehielos":
+		user.RompehielosCount += input.Amount
 	}
 
 	if user.FlashCount < 0 {
@@ -599,14 +594,18 @@ func AdminUpdateInventory(c *fiber.Ctx) error {
 	if user.EstelarCount < 0 {
 		user.EstelarCount = 0
 	}
+	if user.RompehielosCount < 0 {
+		user.RompehielosCount = 0
+	}
 
 	database.DB.Save(&user)
 
 	return c.JSON(fiber.Map{
-		"success": true,
-		"flash":   user.FlashCount,
-		"clasico": user.ClasicoCount,
-		"estelar": user.EstelarCount,
+		"success":     true,
+		"flash":       user.FlashCount,
+		"clasico":     user.ClasicoCount,
+		"estelar":     user.EstelarCount,
+		"rompehielos": user.RompehielosCount,
 	})
 }
 
@@ -623,19 +622,19 @@ func AdminListLikes(c *fiber.Ctx) error {
 	if search != "" {
 		var searchNum uint
 		fmt.Sscanf(search, "%d", &searchNum)
-		
+
 		if searchNum > 0 {
 			query = query.Where("from_user_id = ? OR to_user_id = ?", searchNum, searchNum)
 		} else {
 			// Buscar IDs de usuarios que coincidan con el nombre
 			var users []models.User
 			database.DB.Where("name ILIKE ? OR username ILIKE ?", "%"+search+"%", "%"+search+"%").Select("id").Find(&users)
-			
+
 			var userIDs []uint
 			for _, u := range users {
 				userIDs = append(userIDs, u.ID)
 			}
-			
+
 			if len(userIDs) > 0 {
 				query = query.Where("from_user_id IN ? OR to_user_id IN ?", userIDs, userIDs)
 			} else {
@@ -649,12 +648,12 @@ func AdminListLikes(c *fiber.Ctx) error {
 
 	type LikeResponse struct {
 		ID         uint      `json:"id"`
-		FromUserID uint     `json:"from_user_id"`
-		ToUserID  uint     `json:"to_user_id"`
-		Action    string   `json:"action"`
-		Message   string   `json:"message"`
-		Status    string   `json:"status"`
-		CreatedAt time.Time `json:"created_at"`
+		FromUserID uint      `json:"from_user_id"`
+		ToUserID   uint      `json:"to_user_id"`
+		Action     string    `json:"action"`
+		Message    string    `json:"message"`
+		Status     string    `json:"status"`
+		CreatedAt  time.Time `json:"created_at"`
 	}
 
 	response := []LikeResponse{}
@@ -662,11 +661,11 @@ func AdminListLikes(c *fiber.Ctx) error {
 		response = append(response, LikeResponse{
 			ID:         l.ID,
 			FromUserID: l.FromUserID,
-			ToUserID:  l.ToUserID,
-			Action:    l.Action,
-			Message:   l.Message,
-			Status:    l.Status,
-			CreatedAt: l.CreatedAt,
+			ToUserID:   l.ToUserID,
+			Action:     l.Action,
+			Message:    l.Message,
+			Status:     l.Status,
+			CreatedAt:  l.CreatedAt,
 		})
 	}
 

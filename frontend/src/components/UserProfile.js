@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MapPin, Crown, FileText, UserCircle, UserPlus, UserCheck, MessageCircle, ArrowLeft, Grid, Edit3, Settings, Flag } from "lucide-react";
+import { MapPin, Crown, FileText, UserCircle, UserPlus, UserCheck, MessageCircle, ArrowLeft, Grid, Edit3, Settings, Flag, ShieldCheck } from "lucide-react";
 import { api } from "@/utils/api";
 import { motion, AnimatePresence } from "framer-motion";
 import EditProfileModal from "./EditProfileModal";
@@ -156,6 +156,7 @@ export default function UserProfile({ username }) {
             <div className="absolute bottom-0 w-full p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent text-white pointer-events-none md:hidden">
               <h1 className="text-4xl font-black uppercase tracking-tighter flex items-end gap-2 drop-shadow-md">
                 {user?.name}
+                {user?.is_verified && <ShieldCheck size={28} className={user?.verification_badge === 'gold' ? 'text-yellow-500' : 'text-blue-500'} />}
                 <span className="text-3xl font-light text-cuadralo-pink">
                   {user?.birth_date ? new Date().getFullYear() - new Date(user?.birth_date).getFullYear() : ""}
                 </span>
@@ -181,6 +182,7 @@ export default function UserProfile({ username }) {
           <div className="hidden md:block">
             <h1 className="text-6xl lg:text-7xl font-black uppercase tracking-tighter flex items-end gap-3 drop-shadow-md">
               {user?.name}
+              {user?.is_verified && <ShieldCheck size={40} className={user?.verification_badge === 'gold' ? 'text-yellow-500' : 'text-blue-500'} />}
               <span className="text-5xl font-light text-cuadralo-pink mb-1">
                 {user?.birth_date ? new Date().getFullYear() - new Date(user?.birth_date).getFullYear() : ""}
               </span>

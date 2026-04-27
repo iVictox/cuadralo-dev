@@ -114,7 +114,6 @@ export default function ChatList({ onChatSelect, onLoaded }) {
                     {filteredLikes.map((like) => (
                         <motion.div 
                             key={like.id}
-                            initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                             className="p-4 rounded-2xl bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 flex items-center gap-4 cursor-pointer hover:scale-[1.01] transition-all"
                             onClick={() => onChatSelect(like)}
                         >
@@ -154,7 +153,6 @@ export default function ChatList({ onChatSelect, onLoaded }) {
                     {filteredNewMatches.map((match, i) => (
                         <motion.div 
                             key={match.id}
-                            initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: i * 0.05 }}
                             className="flex flex-col items-center gap-2 cursor-pointer group min-w-[75px]"
                             onClick={() => onChatSelect(match)}
                         >
@@ -190,7 +188,6 @@ export default function ChatList({ onChatSelect, onLoaded }) {
                     return (
                         <motion.div
                             key={chat.id}
-                            layout
                             onClick={() => onChatSelect(chat)}
                             className={`flex items-center gap-4 p-4 mx-2 rounded-2xl cursor-pointer transition-all group ${hasUnread ? 'bg-cuadralo-pink/5 border border-cuadralo-pink/10' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
                         >

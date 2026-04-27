@@ -25,7 +25,8 @@ const menuCategories = [
       { name: "Todos los Usuarios", path: "/admin/users" },
       { name: "Usuarios VIP", path: "/admin/vip" },
       { name: "Usuarios Suspendidos", path: "/admin/users/suspended" },
-      { name: "Usuarios Eliminados", path: "/admin/users/deleted" }
+      { name: "Usuarios Eliminados", path: "/admin/users/deleted" },
+      { name: "Verificaciones de Identidad", path: "/admin/verifications" }
     ]
   },
   {

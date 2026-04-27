@@ -123,11 +123,11 @@ export default function FeedPost({ post, onDelete, onViewStory, isModal = false,
   return (
     <>
         <div className="w-full">
-            {/* Glass Card Principal Morado */}
-            <div className="relative bg-gradient-to-br from-[#2d1b4e]/60 via-[#1a0b2e]/40 to-[#150a21]/60 backdrop-blur-xl rounded-3xl border border-[#8b1a93]/30 shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+            {/* Glass Card Principal */}
+            <div className="relative bg-white/70 dark:bg-transparent dark:bg-gradient-to-br dark:from-[#2d1b4e]/60 dark:via-[#1a0b2e]/40 dark:to-[#150a21]/60 backdrop-blur-xl rounded-[2.5rem] border border-black/5 dark:border-[#8b1a93]/30 overflow-hidden transition-colors">
                 {/* Glow Effect */}
-                <div className="absolute inset-0 rounded-3xl pointer-events-none border border-[#8b1a93]/20" />
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#f2158e]/30 to-transparent" />
+                <div className="absolute inset-0 rounded-[2.5rem] pointer-events-none border border-transparent dark:border-[#8b1a93]/20" />
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cuadralo-pink/30 to-transparent" />
                 
                 {/* Header del Post */}
                 <div className="relative flex items-center justify-between p-4 pb-3">
@@ -154,11 +154,11 @@ export default function FeedPost({ post, onDelete, onViewStory, isModal = false,
                                 else router.push(`/u/${post.user.username}`);
                             }}
                         >
-                            <h4 className="font-bold text-purple-100 text-[15px] tracking-tight">
+                            <h4 className="font-bold text-cuadralo-textLight dark:text-purple-100 text-[15px] tracking-tight">
                                 {post.user?.name}
                             </h4>
-                            <p className="text-xs text-purple-400">@{post.user?.username}</p>
-                            <div className="flex items-center gap-2 text-xs text-purple-500 mt-0.5">
+                            <p className="text-xs text-cuadralo-textMutedLight dark:text-purple-400">@{post.user?.username}</p>
+                            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-purple-500 mt-0.5">
                                 <span>{formatTimeAgo(post.created_at)}</span>
                                 {post.location && (
                                     <>
@@ -173,7 +173,7 @@ export default function FeedPost({ post, onDelete, onViewStory, isModal = false,
                     </div>
 
                     <div className="relative">
-                        <button onClick={() => setShowMenu(!showMenu)} className="p-2 rounded-full text-purple-400 hover:text-purple-200 hover:bg-[#8b1a93]/20 transition-all">
+                        <button onClick={() => setShowMenu(!showMenu)} className="p-2 rounded-full text-gray-400 hover:text-cuadralo-textLight dark:text-purple-400 dark:hover:text-purple-200 hover:bg-black/5 dark:hover:bg-[#8b1a93]/20 transition-all">
                             <MoreVertical size={20} />
                         </button>
 
@@ -183,7 +183,7 @@ export default function FeedPost({ post, onDelete, onViewStory, isModal = false,
                                     initial={{ opacity: 0, scale: 0.9, y: -10 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                                    className="absolute right-0 top-12 w-44 bg-[#150a21]/95 backdrop-blur-xl border border-[#8b1a93]/30 rounded-2xl shadow-xl z-20 overflow-hidden"
+                                    className="absolute right-0 top-12 w-44 bg-white/95 dark:bg-[#150a21]/95 backdrop-blur-xl border border-black/5 dark:border-[#8b1a93]/30 rounded-2xl shadow-xl z-20 overflow-hidden"
                                 >
                                     {isMyPost ? (
                                         <button onClick={handleDeletePost} className="w-full text-left px-4 py-3 text-red-400 hover:bg-red-500/10 text-sm flex items-center gap-2 transition-colors">
@@ -208,47 +208,46 @@ export default function FeedPost({ post, onDelete, onViewStory, isModal = false,
                         onClick={openCommentsModal}
                     >
                         <img src={post.image_url} alt="Post" className="w-full h-full object-cover" loading="lazy" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0f0518]/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 dark:from-[#0f0518]/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                 ) : (
                     <div 
                         className="w-full py-12 px-8 cursor-pointer"
                         onClick={openCommentsModal}
                     >
-                        <p className="text-3xl md:text-4xl font-bold text-purple-100 text-center leading-tight whitespace-pre-wrap">
+                        <p className="text-3xl md:text-4xl font-bold text-cuadralo-textLight dark:text-purple-100 text-center leading-tight whitespace-pre-wrap">
                             {post.caption}
                         </p>
                     </div>
                 )}
 
                 {/* Acciones - Barrita Neón */}
-                <div className="relative px-4 py-3 flex items-center gap-6 border-t border-[#8b1a93]/20">
+                <div className="relative px-4 py-3 flex items-center gap-6 border-t border-black/5 dark:border-[#8b1a93]/20">
                     <button 
                         onClick={handleLike} 
-                        className={`flex items-center gap-2 transition-all hover:scale-105 ${liked ? "text-[#f2158e]" : "text-purple-400 hover:text-purple-200"}`}
+                        className={`flex items-center gap-2 transition-all hover:scale-105 ${liked ? "text-cuadralo-pink" : "text-gray-400 hover:text-cuadralo-textLight dark:text-purple-400 dark:hover:text-purple-200"}`}
                     >
                         <GlowIcon icon={Heart} active={liked} size={28} />
-                        {likesCount > 0 && <span className="text-sm font-semibold text-purple-300">{likesCount}</span>}
+                        {likesCount > 0 && <span className="text-sm font-semibold text-gray-500 dark:text-purple-300">{likesCount}</span>}
                     </button>
 
                     <button 
                         onClick={openCommentsModal} 
-                        className="flex items-center gap-2 text-purple-400 hover:text-purple-200 transition-all hover:scale-105"
+                        className="flex items-center gap-2 text-gray-400 hover:text-cuadralo-textLight dark:text-purple-400 dark:hover:text-purple-200 transition-all hover:scale-105"
                     >
                         <MessageCircle size={28} strokeWidth={1.5} />
-                        {commentsCount > 0 && <span className="text-sm font-semibold text-purple-300">{commentsCount}</span>}
+                        {commentsCount > 0 && <span className="text-sm font-semibold text-gray-500 dark:text-purple-300">{commentsCount}</span>}
                     </button>
                     
-                    <button className="ml-auto text-purple-400 hover:text-purple-200 transition-all hover:scale-105">
+                    <button className="ml-auto text-gray-400 hover:text-cuadralo-textLight dark:text-purple-400 dark:hover:text-purple-200 transition-all hover:scale-105">
                         <Share2 size={26} strokeWidth={1.5} />
                     </button>
                 </div>
 
-                {/* Caption si hay imagen */}
                 {post.image_url && post.caption && (
                     <div className="px-4 pb-4">
-                        <p className="text-purple-200 text-sm leading-relaxed">
-                            <span className="font-bold text-[#f2158e]">@{post.user?.username}</span> {post.caption}
+                        <p className="text-gray-600 dark:text-purple-200 text-sm leading-relaxed">
+                            <span className="font-bold text-cuadralo-pink">@{post.user?.username}</span> {post.caption}
                         </p>
                     </div>
                 )}
