@@ -182,6 +182,13 @@ func Setup(app *fiber.App) {
 	admin.Get("/settings", controllers.GetSystemSettings)
 	admin.Post("/inventory/migrate", controllers.MigrateInventory)
 
+	// Gestión de Inventario
+	admin.Get("/inventory", controllers.AdminGetInventoryPage)
+	admin.Get("/inventory/:id", controllers.AdminGetUserInventory)
+	admin.Post("/inventory/add", controllers.AdminAddInventoryItem)
+	admin.Post("/inventory/remove", controllers.AdminRemoveInventoryItem)
+	admin.Post("/inventory/vip", controllers.AdminSetVIPStatus)
+
 	// ==========================================
 	// 🔴 PANEL DE ALTO RIESGO (Solo SuperAdmin)
 	// ==========================================

@@ -28,6 +28,13 @@ const menuCategories = [
       { name: "Usuarios Eliminados", path: "/admin/users/deleted" }
     ]
   },
+  {
+    title: "INVENTARIO",
+    icon: Sparkles,
+    items: [
+      { name: "Gestión de Inventario", path: "/admin/inventory" }
+    ]
+  },
 {
     title: "ROMPEHIELOS",
     icon: Sparkles,
