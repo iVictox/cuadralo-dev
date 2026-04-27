@@ -19,21 +19,21 @@ func (ih *InventoryHelper) GetItem(userID uint, itemType models.ItemType) *model
 func (ih *InventoryHelper) AddItem(userID uint, itemType models.ItemType, count int) error {
 	var item models.InventoryItem
 	err := database.DB.Where("user_id = ? AND item_type = ?", userID, itemType).First(&item).Error
-	
+
 	if err != nil {
 		newItem := models.InventoryItem{
 			UserID:    userID,
-			ItemType: itemType,
-			Count:    count,
+			ItemType:  itemType,
+			Count:     count,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
 		return database.DB.Create(&newItem).Error
 	}
-	
+
 	item.Count += count
 	item.UpdatedAt = time.Now()
-	
+
 	return database.DB.Save(&item).Error
 }
 
@@ -43,14 +43,14 @@ func (ih *InventoryHelper) RemoveItem(userID uint, itemType models.ItemType, cou
 	if err != nil {
 		return err
 	}
-	
+
 	if item.Count < count {
 		return nil
 	}
-	
+
 	item.Count -= count
 	item.UpdatedAt = time.Now()
-	
+
 	return database.DB.Save(&item).Error
 }
 
@@ -75,7 +75,7 @@ func (ih *InventoryHelper) GetCount(userID uint, itemType models.ItemType) int {
 func (ih *InventoryHelper) GetUserInventory(userID uint) map[string]int {
 	items := []models.InventoryItem{}
 	database.DB.Where("user_id = ?", userID).Find(&items)
-	
+
 	inventory := make(map[string]int)
 	for _, item := range items {
 		inventory[string(item.ItemType)] = item.Count

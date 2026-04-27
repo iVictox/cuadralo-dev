@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/utils/api";
-import { Search, Plus, Minus, Crown, Sparkles, Zap, Save, Package, ArrowLeft, Settings } from "lucide-react";
+import { Search, Plus, Minus, Crown, Sparkles, Zap, Save, Package, ArrowLeft, Settings, Flame, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const ITEM_TYPES = [
   { value: "flash", label: "Destellos Flash", icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10", borderColor: "border-yellow-500/30" },
   { value: "clasico", label: "Destellos Clásicos", icon: Sparkles, color: "text-blue-500", bgColor: "bg-blue-500/10", borderColor: "border-blue-500/30" },
   { value: "estelar", label: "Destellos Estelares", icon: Sparkles, color: "text-purple-500", bgColor: "bg-purple-500/10", borderColor: "border-purple-500/30" },
+  { value: "rompehielos", label: "Rompehielos", icon: Flame, color: "text-green-500", bgColor: "bg-green-500/10", borderColor: "border-green-500/30" },
 ];
 
 export default function AdminInventoryPage() {
@@ -65,24 +66,6 @@ export default function AdminInventoryPage() {
     setPage(1);
   };
 
-  const handleQuickAction = async (userId, itemType, action) => {
-    if (processing) return;
-    setProcessing(true);
-    try {
-      await api.post(`/admin/inventory/${action}`, {
-        user_id: userId,
-        item_type: itemType,
-        count: 1,
-      });
-      await fetchUsers();
-    } catch (error) {
-      console.error("Error in quick action:", error);
-      alert(error.response?.data?.error || "Error al procesar");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
   const openModal = (user, type) => {
     setSelectedUserId(user.id);
     setSelectedUser(user);
@@ -96,60 +79,34 @@ export default function AdminInventoryPage() {
     setShowModal(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (modalType === "add" || modalType === "remove") {
-        await api.post(`/admin/inventory/${modalType}`, {
-          user_id: selectedUserId,
-          item_type: formData.itemType,
-          count: formData.count,
-        });
-      } else if (modalType === "vip") {
-        await api.post("/admin/inventory/vip", {
-          user_id: selectedUserId,
-          is_prime: formData.isPrime,
-          days: formData.days,
-        });
-      }
-      setShowModal(false);
-      setSelectedUserId(null);
-      setSelectedUser(null);
-      fetchUsers();
-    } catch (error) {
-      alert(error.response?.data?.error || "Error al procesar la solicitud");
-    }
-  };
-
   const totalPages = Math.ceil(total / limit);
 
+  // Desvinculación total: Cada item consulta su propio contador exacto
   const getCountForType = (user, itemType) => {
     if (!user) return 0;
     const key = `${user.id}_${itemType}`;
     const localChange = inventoryChanges[key] || 0;
-    
-    let baseCount = 0;
-    if (itemType === "flash") baseCount = user.flash_count || 0;
-    else if (itemType === "clasico") baseCount = user.clasico_count || 0;
-    else if (itemType === "estelar") baseCount = user.estelar_count || 0;
+    const baseCount = user[`${itemType}_count`] || 0;
     
     return baseCount + localChange;
-  };
-
-  const getRompehielosCount = (user) => {
-    if (!user) return 0;
-    const flash = getCountForType(user, "flash");
-    const clasico = getCountForType(user, "clasico");
-    const estelar = getCountForType(user, "estelar");
-    const rompehielosChange = inventoryChanges[`${user.id}_rompehielos`] || 0;
-    const rompehielosBase = user.rompehielos_count || 0;
-    return flash + clasico + estelar + rompehielosBase + rompehielosChange;
   };
 
   const handleLocalChange = (userId, itemType, delta) => {
     const key = `${userId}_${itemType}`;
     setInventoryChanges(prev => {
       const newChanges = { ...prev, [key]: (prev[key] || 0) + delta };
+      setHasChanges(Object.values(newChanges).some(v => v !== 0));
+      return newChanges;
+    });
+  };
+
+  // Función para restablecer exactamente a 0 un item
+  const handleSetZero = (userId, itemType) => {
+    const baseCount = selectedUser[`${itemType}_count`] || 0;
+    const key = `${userId}_${itemType}`;
+    setInventoryChanges(prev => {
+      // El delta exacto para llegar a 0 es el negativo del monto base
+      const newChanges = { ...prev, [key]: -baseCount };
       setHasChanges(Object.values(newChanges).some(v => v !== 0));
       return newChanges;
     });
@@ -197,7 +154,7 @@ export default function AdminInventoryPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-primary">Gestión de Inventario</h1>
-        <p className="text-sm text-muted mt-1">Administra destellos, rompehielos y VIP de los usuarios</p>
+        <p className="text-sm text-muted mt-1">Administra destellos, rompehielos y VIP de los usuarios de forma independiente</p>
       </div>
 
       <div className="bg-card border border-subtle rounded-xl p-4 mb-6">
@@ -259,7 +216,7 @@ export default function AdminInventoryPage() {
                     </td>
                     <td className="p-3 text-center">
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-500/10 text-green-500 rounded-full text-xs font-medium">
-                        <Zap size={12} />
+                        <Flame size={12} />
                         {getCountForType(user, "rompehielos")}
                       </span>
                     </td>
@@ -358,7 +315,7 @@ export default function AdminInventoryPage() {
                            key={item.value}
                            className={`p-4 rounded-xl border ${item.borderColor} ${item.bgColor} relative overflow-hidden`}
                          >
-                           {hasLocalChange && (
+                           {hasLocalChange !== undefined && hasLocalChange !== 0 && (
                              <span className="absolute top-2 right-2 text-xs bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded">
                                {hasLocalChange > 0 ? '+' : ''}{hasLocalChange}
                              </span>
@@ -391,6 +348,14 @@ export default function AdminInventoryPage() {
                                >
                                  <Settings size={12} />
                                </button>
+                               {/* BOTON DE RESETEAR A 0 */}
+                               <button
+                                 onClick={() => handleSetZero(selectedUser.id, item.value)}
+                                 className="p-1 ml-1 bg-gray-500/20 text-gray-400 rounded hover:bg-gray-500/40 hover:text-white transition-colors"
+                                 title="Restablecer a 0"
+                               >
+                                 <RotateCcw size={12} />
+                               </button>
                              </div>
                            </div>
                            <p className="text-2xl font-bold text-primary">{count}</p>
@@ -398,14 +363,6 @@ export default function AdminInventoryPage() {
                          </div>
                        );
                      })}
-                     
-                     <div className="p-4 rounded-xl border border-green-500/30 bg-green-500/10 relative overflow-hidden">
-                       <div className="flex items-start justify-between mb-3">
-                         <Sparkles size={24} className="text-green-500" />
-                       </div>
-                        <p className="text-2xl font-bold text-primary">{getRompehielosCount(selectedUser)}</p>
-                        <p className="text-xs text-muted mt-1">Rompehielos (Suma de destellos)</p>
-                     </div>
                    </div>
 
                    {hasChanges && (
@@ -473,20 +430,33 @@ export default function AdminInventoryPage() {
                    }} className="space-y-4">
                      {(modalType === "add" || modalType === "remove") && (
                        <>
-                         <div>
-                           <label className="block text-xs font-medium text-muted mb-1.5">Tipo de Item</label>
-                           <select
-                             value={formData.itemType}
-                             onChange={(e) => setFormData({ ...formData, itemType: e.target.value })}
-                             className="w-full px-3 py-2 bg-card-hover border border-subtle rounded-lg text-sm text-primary focus:outline-none focus:border-accent-primary"
-                           >
-                             {ITEM_TYPES.map((type) => (
-                               <option key={type.value} value={type.value}>{type.label}</option>
-                             ))}
-                           </select>
+                         <div className="grid grid-cols-2 gap-4">
+                           <div>
+                             <label className="block text-xs font-medium text-muted mb-1.5">Acción</label>
+                             <select
+                               value={modalType}
+                               onChange={(e) => setModalType(e.target.value)}
+                               className="w-full px-3 py-2 bg-card-hover border border-subtle rounded-lg text-sm text-primary focus:outline-none focus:border-accent-primary"
+                             >
+                               <option value="add">Agregar (+)</option>
+                               <option value="remove">Remover (-)</option>
+                             </select>
+                           </div>
+                           <div>
+                             <label className="block text-xs font-medium text-muted mb-1.5">Tipo de Item</label>
+                             <select
+                               value={formData.itemType}
+                               onChange={(e) => setFormData({ ...formData, itemType: e.target.value })}
+                               className="w-full px-3 py-2 bg-card-hover border border-subtle rounded-lg text-sm text-primary focus:outline-none focus:border-accent-primary"
+                             >
+                               {ITEM_TYPES.map((type) => (
+                                 <option key={type.value} value={type.value}>{type.label}</option>
+                               ))}
+                             </select>
+                           </div>
                          </div>
                          <div>
-                           <label className="block text-xs font-medium text-muted mb-1.5">Cantidad</label>
+                           <label className="block text-xs font-medium text-muted mb-1.5">Cantidad Personalizada</label>
                            <input
                              type="number"
                              min="1"

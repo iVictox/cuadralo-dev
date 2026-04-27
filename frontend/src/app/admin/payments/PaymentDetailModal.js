@@ -3,7 +3,8 @@ import { X, CheckCircle, XCircle, ShieldCheck, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function PaymentDetailModal({ payment, onClose, onAction }) {
-  const [grantVip, setGrantVip] = useState(payment.item_type === 'vip' || payment.item_type === 'prime');
+  const isVipPayment = payment?.item_type === 'vip' || payment?.item_type === 'prime';
+  const [grantVip, setGrantVip] = useState(isVipPayment);
 
   if (!payment) return null;
 
@@ -69,9 +70,9 @@ export default function PaymentDetailModal({ payment, onClose, onAction }) {
             {/* Detalles de la Transacción */}
             <div className="space-y-3 flex-1 text-sm bg-gray-950 p-5 rounded-2xl border border-gray-800 shadow-inner mb-6">
                 <div className="flex justify-between items-center"><span className="text-gray-500 font-medium">Producto Solicitado:</span> <span className="uppercase bg-purple-600/20 border border-purple-500/30 text-purple-400 px-2.5 py-1 rounded text-xs font-bold tracking-wider">{payment.item_type}</span></div>
-                <div className="flex justify-between items-center"><span className="text-gray-500 font-medium">Monto Reportado:</span> <span className="text-green-400 font-black text-xl">€{payment.amount_usd}</span></div>
+                <div className="flex justify-between items-center"><span className="text-gray-500 font-medium">Monto Reportado:</span> <span className="text-green-400 font-black text-xl">${payment.amount_usd}</span></div>
                 <div className="flex justify-between items-center"><span className="text-gray-500 font-medium">Depositado:</span> <span className="text-white font-bold">{payment.amount_ves} Bs</span></div>
-                <div className="flex justify-between items-center"><span className="text-gray-500 font-medium">Tasa Euro:</span> <span className="font-mono text-gray-400">{payment.rate} Bs/€</span></div>
+                <div className="flex justify-between items-center"><span className="text-gray-500 font-medium">Tasa Dólar:</span> <span className="font-mono text-gray-400">{payment.rate} Bs/$</span></div>
                 
                 <hr className="border-gray-800 my-4" />
                 
@@ -87,22 +88,25 @@ export default function PaymentDetailModal({ payment, onClose, onAction }) {
             {/* Controles de Decisión */}
             {payment.status === 'pending' ? (
                 <div className="space-y-4">
-                    <div className="bg-purple-900/10 border border-purple-500/20 p-4 rounded-xl cursor-pointer hover:bg-purple-900/20 transition-colors" onClick={() => setGrantVip(!grantVip)}>
-                        <label className="flex items-start gap-3 cursor-pointer">
-                            <input 
-                                type="checkbox" 
-                                checked={grantVip}
-                                onChange={(e) => setGrantVip(e.target.checked)}
-                                className="mt-1 w-4 h-4 text-purple-600 bg-gray-900 border-gray-600 rounded focus:ring-purple-500 pointer-events-none"
-                            />
-                            <div>
-                                <span className="block text-white font-bold flex items-center gap-2">
-                                    Otorgar membresía VIP <ShieldCheck size={16} className="text-yellow-500"/>
-                                </span>
-                                <span className="block text-xs text-gray-400 mt-1 leading-relaxed">Al aprobar este pago, se le asignará el rango Prime al usuario automáticamente por 30 días.</span>
-                            </div>
-                        </label>
-                    </div>
+                    {/* Condicional para ocultar VIP si son destellos o rompehielos */}
+                    {isVipPayment && (
+                        <div className="bg-purple-900/10 border border-purple-500/20 p-4 rounded-xl cursor-pointer hover:bg-purple-900/20 transition-colors" onClick={() => setGrantVip(!grantVip)}>
+                            <label className="flex items-start gap-3 cursor-pointer">
+                                <input 
+                                    type="checkbox" 
+                                    checked={grantVip}
+                                    onChange={(e) => setGrantVip(e.target.checked)}
+                                    className="mt-1 w-4 h-4 text-purple-600 bg-gray-900 border-gray-600 rounded focus:ring-purple-500 pointer-events-none"
+                                />
+                                <div>
+                                    <span className="block text-white font-bold flex items-center gap-2">
+                                        Otorgar membresía VIP <ShieldCheck size={16} className="text-yellow-500"/>
+                                    </span>
+                                    <span className="block text-xs text-gray-400 mt-1 leading-relaxed">Al aprobar este pago, se le asignará el rango Prime al usuario automáticamente por 30 días.</span>
+                                </div>
+                            </label>
+                        </div>
+                    )}
 
                     <div className="flex gap-3 pt-2">
                         <button
