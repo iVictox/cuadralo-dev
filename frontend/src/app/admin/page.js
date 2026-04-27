@@ -14,23 +14,25 @@ const StatCard = ({ title, value, icon: Icon, change }) => {
   const changeValue = change !== undefined ? Math.abs(change).toFixed(1) : "0.0";
   
   return (
-    <div className="bg-card border border-subtle rounded-lg p-4">
-      <div className="flex items-start justify-between mb-3">
-        <p className="text-xs font-medium text-muted uppercase tracking-wide">{title}</p>
-        <div className="p-2 bg-card-hover rounded-md">
-          <Icon size={16} className="text-accent-primary" />
+    <div className="bg-card border border-subtle p-5 flex flex-col justify-between">
+      <div className="flex items-start justify-between mb-4">
+        <p className="text-sm font-semibold text-muted uppercase tracking-wider">{title}</p>
+        <div className="p-2 bg-card-hover border border-subtle">
+          <Icon size={18} className="text-accent-primary" />
         </div>
       </div>
-      <p className="text-2xl font-semibold text-primary mb-1">
-        {value !== undefined ? value.toLocaleString() : 0}
-      </p>
-      {change !== undefined && (
-        <div className={`flex items-center gap-1 text-xs font-medium ${isPositive ? "text-success" : "text-error"}`}>
-          {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-          <span>{changeValue}%</span>
-          <span className="text-muted">vs mes ant.</span>
-        </div>
-      )}
+      <div>
+        <p className="text-3xl font-bold text-primary mb-2">
+          {value !== undefined ? value.toLocaleString() : 0}
+        </p>
+        {change !== undefined && (
+          <div className={`flex items-center gap-1.5 text-sm font-semibold ${isPositive ? "text-success" : "text-error"}`}>
+            {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+            <span>{changeValue}%</span>
+            <span className="text-muted font-medium ml-1">vs mes ant.</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -38,9 +40,9 @@ const StatCard = ({ title, value, icon: Icon, change }) => {
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-card border border-subtle rounded-md p-2 shadow-sm">
-        <p className="text-[10px] font-medium text-muted">{label}</p>
-        <p className="text-xs font-semibold text-primary">{payload[0].value?.toLocaleString()}</p>
+      <div className="bg-card border border-subtle p-3 shadow-sm">
+        <p className="text-xs font-semibold text-muted">{label}</p>
+        <p className="text-sm font-bold text-primary">{payload[0].value?.toLocaleString()}</p>
       </div>
     );
   }
@@ -138,14 +140,14 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-subtle pb-4">
         <div>
-          <h1 className="text-xl font-semibold text-primary">Dashboard General</h1>
-          <p className="text-xs text-muted mt-0.5">Resumen del sistema</p>
+          <h1 className="text-2xl font-bold text-primary tracking-tight">Dashboard General</h1>
+          <p className="text-sm text-muted mt-1">Resumen del sistema y métricas clave</p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted bg-card border border-subtle px-3 py-1.5 rounded-md">
-          <Activity size={12} className="text-success" />
-          <span>Actualizado: {new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
+        <div className="flex items-center gap-2 text-sm text-muted bg-card border border-subtle px-4 py-2">
+          <Activity size={16} className="text-success" />
+          <span className="font-medium">Actualizado: {new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
       </div>
 
@@ -156,14 +158,14 @@ export default function AdminDashboard() {
         <StatCard title="Matches" value={stats?.total_matches || 0} icon={Heart} change={matchesChange} />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-card border border-subtle rounded-lg p-4">
-          <div className="flex items-center justify-between mb-4">
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-card border border-subtle p-6">
+          <div className="flex items-center justify-between mb-6 border-b border-subtle pb-4">
             <div>
-              <h2 className="text-sm font-medium text-primary">Crecimiento de Usuarios</h2>
-              <p className="text-[10px] text-muted">Últimos 7 días</p>
+              <h2 className="text-base font-bold text-primary">Crecimiento de Usuarios</h2>
+              <p className="text-sm text-muted">Últimos 7 días</p>
             </div>
-            <span className="text-xs font-medium text-success">+{Math.abs(usersChange).toFixed(1)}%</span>
+            <span className="text-sm font-bold text-success bg-success/10 px-3 py-1">+{Math.abs(usersChange).toFixed(1)}%</span>
           </div>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -191,9 +193,9 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-card border border-subtle rounded-lg p-4">
-            <h3 className="text-xs font-medium text-muted mb-3">Distribución de Usuarios</h3>
+        <div className="space-y-6">
+          <div className="bg-card border border-subtle p-5">
+            <h3 className="text-sm font-bold text-primary mb-4 border-b border-subtle pb-2">Distribución de Usuarios</h3>
             <div className="h-28">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -230,8 +232,8 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="bg-card border border-subtle rounded-lg p-4">
-            <h3 className="text-xs font-medium text-muted mb-3">Ingresos Mensuales</h3>
+          <div className="bg-card border border-subtle p-5">
+            <h3 className="text-sm font-bold text-primary mb-4 border-b border-subtle pb-2">Ingresos Mensuales</h3>
             <div className="h-28">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={revenueData}>
@@ -247,77 +249,77 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div className="bg-card border border-subtle rounded-lg p-4">
-          <div className="flex items-center justify-between mb-4">
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="bg-card border border-subtle p-6">
+          <div className="flex items-center justify-between mb-5 border-b border-subtle pb-3">
             <div className="flex items-center gap-2">
-              <UserPlus size={16} className="text-accent-primary" />
-              <h2 className="text-sm font-medium text-primary">Usuarios Recientes</h2>
+              <UserPlus size={18} className="text-accent-primary" />
+              <h2 className="text-base font-bold text-primary">Usuarios Recientes</h2>
             </div>
-            <span className="text-[10px] text-success font-medium">{recentUsersData.length} nuevos</span>
+            <span className="text-xs text-success font-bold bg-success/10 px-2 py-1">{recentUsersData.length} nuevos</span>
           </div>
           <div className="space-y-2">
             {recentUsersData.length > 0 ? recentUsersData.map((user) => (
               <div key={user.id} className="flex items-center justify-between py-2 border-b border-subtle last:border-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-md bg-accent-bg flex items-center justify-center font-medium text-accent-primary text-xs">
+                  <div className="w-8 h-8 bg-accent-bg flex items-center justify-center font-bold text-accent-primary text-sm border border-subtle">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-primary">{user.name}</p>
-                    <p className="text-[10px] text-muted">{user.email}</p>
+                    <p className="text-sm font-semibold text-primary">{user.name}</p>
+                    <p className="text-xs text-muted">{user.email}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                  <span className={`text-xs font-bold px-2 py-1 ${
                     user.status === 'active' 
                       ? 'bg-success/10 text-success' 
                       : 'bg-warning/10 text-warning'
                   }`}>
-                    {user.status === 'active' ? 'Activo' : 'Pend.'}
+                    {user.status === 'active' ? 'Activo' : 'Pendiente'}
                   </span>
-                  <p className="text-[9px] text-muted mt-0.5 flex items-center gap-1">
-                    <Clock size={9} />{user.time}
+                  <p className="text-xs text-muted mt-1 flex items-center gap-1 justify-end">
+                    <Clock size={12} />{user.time}
                   </p>
                 </div>
               </div>
             )) : (
-              <div className="flex items-center justify-center py-4 text-muted text-xs">
+              <div className="flex items-center justify-center py-6 text-muted text-sm font-medium">
                 No hay usuarios recientes
               </div>
             )}
           </div>
-          <button onClick={() => router.push('/admin/users')} className="w-full mt-3 py-2 text-xs font-medium text-muted bg-card-hover hover:text-primary border border-subtle rounded-md transition-colors">
+          <button onClick={() => router.push('/admin/users')} className="w-full mt-4 py-2.5 text-sm font-bold text-primary bg-card-hover border border-subtle hover:bg-subtle transition-none">
             Ver Todos los Usuarios
           </button>
         </div>
 
-        <div className="bg-card border border-subtle rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity size={16} className="text-accent-primary" />
-            <h2 className="text-sm font-medium text-primary">Actividad Reciente</h2>
+        <div className="bg-card border border-subtle p-6">
+          <div className="flex items-center gap-2 mb-5 border-b border-subtle pb-3">
+            <Activity size={18} className="text-accent-primary" />
+            <h2 className="text-base font-bold text-primary">Actividad Reciente</h2>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {logs.length > 0 ? logs.map((log) => (
-              <div key={log.id} className="flex items-start gap-3 pb-2 border-b border-subtle last:border-0">
-                <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-accent-primary shrink-0"></div>
+              <div key={log.id} className="flex items-start gap-4 pb-3 border-b border-subtle last:border-0">
+                <div className="w-2 h-2 mt-2 bg-accent-primary shrink-0 rounded-none"></div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-primary">
+                  <p className="text-sm font-semibold text-primary">
                     <span className="text-accent-primary">#{log.admin_id}</span>
                     <span className="text-muted"> · {(log.action || "").replace(/_/g, ' ')}</span>
                   </p>
-                  <p className="text-[11px] text-secondary truncate">{log.details}</p>
-                  <p className="text-[9px] text-muted mt-0.5">{new Date(log.created_at).toLocaleString('es-VE')}</p>
+                  <p className="text-xs text-secondary mt-0.5">{log.details}</p>
+                  <p className="text-xs text-muted mt-1">{new Date(log.created_at).toLocaleString('es-VE')}</p>
                 </div>
               </div>
             )) : (
-              <div className="flex flex-col items-center justify-center py-6 text-muted">
-                <Activity size={20} className="opacity-30"/>
-                <p className="text-xs mt-2">Sin actividad reciente</p>
+              <div className="flex flex-col items-center justify-center py-8 text-muted">
+                <Activity size={24} className="opacity-30 mb-2"/>
+                <p className="text-sm font-medium">Sin actividad reciente</p>
               </div>
             )}
           </div>
-          <button onClick={() => router.push('/admin/logs')} className="w-full mt-3 py-2 text-xs font-medium text-muted bg-card-hover hover:text-primary border border-subtle rounded-md transition-colors">
+          <button onClick={() => router.push('/admin/logs')} className="w-full mt-4 py-2.5 text-sm font-bold text-primary bg-card-hover border border-subtle hover:bg-subtle transition-none">
             Ver Registro Completo
           </button>
         </div>

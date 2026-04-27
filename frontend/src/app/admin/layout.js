@@ -8,7 +8,6 @@ import {
   Settings, Crown, FileText, ChevronDown, LogOut, Menu, X, 
   Bell, Search, ChevronRight, Moon, Sun, Zap, Sparkles, Heart
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
 import { ConfirmProvider } from "@/context/ConfirmContext";
 
@@ -189,19 +188,19 @@ export default function AdminLayout({ children }) {
       )}
 
       <aside 
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-[240px] h-full bg-sidebar border-r border-subtle flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-[260px] h-full bg-sidebar border-r border-subtle flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} transition-none`}
       >
-        <div className="p-4 flex justify-between items-center border-b border-subtle shrink-0">
+        <div className="p-5 flex justify-between items-center border-b border-subtle shrink-0 bg-card">
           <div className="flex flex-col">
-            <span className="text-lg font-semibold tracking-tight">CUADRALO</span>
-            <span className="text-[10px] font-medium text-muted uppercase tracking-wider">Control Panel</span>
+            <span className="text-xl font-bold tracking-tight text-primary">CUADRALO</span>
+            <span className="text-xs font-semibold text-accent-primary uppercase tracking-widest mt-0.5">Admin Panel</span>
           </div>
           <button className="lg:hidden text-secondary p-1.5" onClick={() => setSidebarOpen(false)}>
             <X size={16} />
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-3 custom-scrollbar px-2.5 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto py-4 custom-scrollbar px-3 space-y-1 bg-sidebar">
           {menuCategories.map((category, idx) => {
             if (category.roles && !category.roles.includes(userRole)) return null;
 
@@ -209,36 +208,36 @@ export default function AdminLayout({ children }) {
             const isOpen = openCategory === category.title;
 
             return (
-              <div key={idx} className="mb-0.5">
+              <div key={idx} className="mb-2">
                 <button 
                   onClick={() => setOpenCategory(isOpen ? "" : category.title)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-150 text-[12px] font-medium ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-none transition-none text-sm font-semibold ${
                     isCategoryActive
-                      ? "bg-accent-bg text-accent-primary"
+                      ? "text-primary"
                       : isOpen 
-                        ? "bg-card-hover text-primary" 
-                        : "text-secondary hover:bg-card-hover hover:text-primary"
+                        ? "text-primary" 
+                        : "text-secondary hover:text-primary"
                   }`}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <category.icon size={15} />
+                  <div className="flex items-center gap-3">
+                    <category.icon size={18} className={isCategoryActive ? "text-accent-primary" : ""} />
                     <span>{category.title}</span>
                   </div>
-                  <ChevronDown size={12} className={`transition-transform duration-150 ${isOpen ? "rotate-180" : ""}`} />
+                  <ChevronDown size={14} className={`${isOpen ? "rotate-180" : ""}`} />
                 </button>
 
-                <div className={`overflow-hidden transition-all duration-200 ${isOpen ? "max-h-[500px] mt-0.5" : "max-h-0"}`}>
-                  <ul className="pl-6 pr-2 py-1 space-y-0.5 border-l border-subtle ml-1.5">
+                <div className={`${isOpen ? "block mt-1" : "hidden"}`}>
+                  <ul className="pl-4 pr-2 py-1 space-y-1">
                     {category.items.map((item) => {
                       const isItemActive = pathname === item.path;
                       return (
                         <li key={item.path}>
                           <Link href={item.path}>
                             <span
-                              className={`block px-2.5 py-1.5 rounded-md transition-colors text-[11.5px] font-medium ${
+                              className={`block px-4 py-2 text-sm font-medium border-l-2 ${
                                 isItemActive
-                                  ? "bg-accent-primary text-white"
-                                  : "text-muted hover:text-primary hover:bg-card-hover"
+                                  ? "border-accent-primary bg-accent-bg text-accent-primary"
+                                  : "border-transparent text-muted hover:text-primary hover:bg-card-hover"
                               }`}
                               onClick={() => window.innerWidth < 1024 && setSidebarOpen(false)}
                             >
@@ -255,56 +254,57 @@ export default function AdminLayout({ children }) {
           })}
         </nav>
 
-        <div className="p-3 border-t border-subtle bg-sidebar shrink-0">
+        <div className="p-4 border-t border-subtle bg-sidebar shrink-0">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-muted text-xs font-medium bg-card-hover hover:bg-error/10 hover:text-error border border-subtle rounded-lg transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-muted text-sm font-semibold bg-card border border-subtle hover:bg-error/10 hover:text-error hover:border-error/20 transition-none"
           >
-            <LogOut size={13} /> Cerrar Sesión
+            <LogOut size={16} /> Cerrar Sesión
           </button>
         </div>
       </aside>
 
       <main className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="bg-header border-b border-subtle px-5 py-2.5 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-secondary p-1.5 hover:bg-card-hover rounded-lg">
-              <Menu size={18} />
+        <header className="bg-header border-b border-subtle px-6 py-3 flex items-center justify-between shrink-0 h-[70px]">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-secondary p-2 hover:bg-card-hover">
+              <Menu size={20} />
             </button>
-            <div className="hidden md:flex items-center gap-2 text-xs text-muted">
-              <span className="font-medium">Panel</span>
-              <ChevronRight size={12} />
+            <div className="hidden md:flex items-center gap-2 text-sm text-muted">
+              <span className="font-semibold text-primary">Panel</span>
+              <ChevronRight size={14} />
               <span className="text-secondary font-medium">{initialCategory}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-card-hover border border-subtle rounded-lg text-xs text-muted">
-              <Search size={14} />
-              <span className="font-medium">Buscar</span>
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-card-hover border border-subtle text-sm text-muted">
+              <Search size={16} />
+              <input type="text" placeholder="Buscar..." className="bg-transparent border-none outline-none text-primary placeholder-muted w-48" />
+            </div>
 
             <button 
               onClick={toggleMode}
-              className="p-2 bg-card-hover border border-subtle rounded-lg text-secondary hover:text-primary transition-colors"
+              className="p-2 bg-card-hover border border-subtle text-secondary hover:text-primary transition-none"
             >
-              {isDark ? <Sun size={16} /> : <Moon size={16} />}
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
-            <button className="p-2 bg-card-hover border border-subtle rounded-lg text-secondary hover:text-primary transition-colors relative">
-              <Bell size={16} />
+            <button className="p-2 bg-card-hover border border-subtle text-secondary hover:text-primary transition-none relative">
+              <Bell size={18} />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent-primary rounded-full"></span>
             </button>
 
-            <div className="flex items-center gap-2 pl-2 border-l border-subtle">
+            <div className="flex items-center gap-3 pl-4 border-l border-subtle">
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-medium text-primary">
+                <p className="text-sm font-bold text-primary">
                   {currentUser?.username || 'Admin'}
                 </p>
-                <p className="text-[9px] font-medium text-accent-primary uppercase">
+                <p className="text-[11px] font-semibold text-accent-primary uppercase tracking-wide">
                   {currentUser?.role || 'admin'}
                 </p>
               </div>
-              <div className="w-8 h-8 rounded-lg bg-accent-primary flex items-center justify-center font-semibold text-white text-xs">
+              <div className="w-10 h-10 bg-accent-primary flex items-center justify-center font-bold text-white text-sm shadow-sm">
                 {currentUser?.username?.charAt(0).toUpperCase() || 'A'}
               </div>
             </div>
