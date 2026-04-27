@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
     X, ChevronRight, UploadCloud, CheckCircle, Smartphone, 
-    Building, Hash, Info, RefreshCw, Crown, Zap, 
+    Building, Hash, Info, RefreshCw, Crown, Zap, Flame, 
     Lock, ShieldCheck, Check, ArrowRight
 } from "lucide-react";
 import { api } from "@/utils/api";
@@ -55,6 +55,10 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
   const [receiptFile, setReceiptFile] = useState(null);
   const [receiptPreview, setReceiptPreview] = useState(null);
 
+  // Filtros estrictos para identificar si el producto es rompehielos sin margen de error
+  const isRompehielos = product?.id === 'rompehielos' || product?.type === 'rompehielos' || product?.flashType === 'rompehielos' || (product?.name && product.name.toLowerCase().includes('rompehielo'));
+  const isFlash = !isRompehielos && (product?.type === 'flash' || product?.id === 'flash' || (product?.name && product.name.toLowerCase().includes('destello')));
+
   useEffect(() => {
       document.body.style.overflow = "hidden";
       return () => {
@@ -62,21 +66,19 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
       };
   }, []);
 
-  // ✅ Extrae y utiliza LA TASA EXACTA almacenada por el administrador en la base de datos
   useEffect(() => {
       const fetchRate = async () => {
           try {
               const res = await api.get("/premium/rate");
               if (res.rate && res.price) {
                   setBcvRate(res.rate);
-                  // Usamos el product.price (que ya viene de la BD) multiplicado por la tasa
                   setAmountVES((product.price * res.rate).toFixed(2));
               } else {
                   throw new Error("Configuración incompleta");
               }
           } catch (error) {
               console.error("Fallo obteniendo la configuración:", error);
-              const fallbackRate = 45.00; // Fallback USD aprox
+              const fallbackRate = 45.00;
               setBcvRate(fallbackRate); 
               setAmountVES((product.price * fallbackRate).toFixed(2));
           }
@@ -102,8 +104,9 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
       try {
           const receiptUrl = await api.upload(receiptFile);
 
+          // Ahora el envío fuerza la separación de rompehielos vs destellos clásicos
           const paymentData = {
-              item_type: product.type === 'flash' ? 'flash' : product.id,
+              item_type: isRompehielos ? 'rompehielos' : (isFlash ? 'flash' : product.id),
               item_name: product.name,
               amount_usd: product.price,
               amount_ves: parseFloat(amountVES),
@@ -112,9 +115,9 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
               bank: formData.bank,
               phone: formData.phone,
               receipt: receiptUrl,
-              ...(product.type === 'flash' && {
-                  flash_qty: product.quantity,
-                  flash_type: product.flashType
+              ...((isFlash || isRompehielos) && {
+                  flash_qty: product.quantity || 1,
+                  flash_type: isRompehielos ? 'rompehielos' : (product.flashType || 'clasico')
               })
           };
 
@@ -165,8 +168,14 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
                             <span className="text-[10px] sm:text-xs font-black text-zinc-400 uppercase tracking-widest mb-4 block">Estás comprando</span>
                             
                             <div className="flex items-start gap-4 mb-8">
-                                <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center shadow-[0_4px_15px_rgba(217,119,6,0.2)] text-white border border-yellow-500/30">
-                                    {product.id === 'vip' ? <Crown size={36} strokeWidth={2.5} /> : <Zap size={36} strokeWidth={2.5} />}
+                                <div className={`w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-2xl flex items-center justify-center text-white border ${
+                                    product.id === 'vip' ? 'bg-gradient-to-br from-yellow-400 to-amber-600 shadow-[0_4px_15px_rgba(217,119,6,0.2)] border-yellow-500/30' :
+                                    isRompehielos ? 'bg-gradient-to-br from-green-400 to-emerald-600 shadow-[0_4px_15px_rgba(16,185,129,0.2)] border-green-500/30' :
+                                    'bg-gradient-to-br from-blue-400 to-indigo-600 shadow-[0_4px_15px_rgba(59,130,246,0.2)] border-blue-500/30'
+                                }`}>
+                                    {product.id === 'vip' ? <Crown size={36} strokeWidth={2.5} /> : 
+                                     isRompehielos ? <Flame size={36} strokeWidth={2.5} /> : 
+                                     <Zap size={36} strokeWidth={2.5} />}
                                 </div>
                                 <div>
                                     <h4 className="text-2xl sm:text-3xl font-black text-zinc-900 tracking-tight leading-none mb-2">{product.name}</h4>
@@ -187,9 +196,16 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
                                             <BenefitRow text="1 Destello mensual gratis" />
                                             <BenefitRow text="3 Rompehielos mensuales gratis" />
                                         </>
-                                    ) : product.type === 'flash' ? (
+                                    ) : isRompehielos ? (
                                         <>
-                                            <BenefitRow text={`${product.quantity} destello(s) de tipo ${product.flashType}`} />
+                                            <BenefitRow text={`${product.quantity || 1} Rompehielos Puros`} />
+                                            <BenefitRow text="Inicia conversaciones al instante" />
+                                            <BenefitRow text="Salta la espera del Match" />
+                                            <BenefitRow text="Destaca enviando mensaje directo" />
+                                        </>
+                                    ) : isFlash ? (
+                                        <>
+                                            <BenefitRow text={`${product.quantity || 1} destello(s) de tipo ${product.flashType || 'clásico'}`} />
                                             <BenefitRow text="Visibilidad máxima en el feed" />
                                             <BenefitRow text="Apareces primero en búsquedas" />
                                             <BenefitRow text="Badge de destello activo" />
@@ -207,7 +223,6 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
                             <div className="bg-zinc-50 rounded-3xl p-6 sm:p-8 border border-zinc-200 mb-8">
                                 <div className="flex justify-between items-center mb-4">
                                     <span className="text-zinc-600 text-sm sm:text-base font-bold">Subtotal ({product.name})</span>
-                                    {/* ✅ Símbolo de Dólares */}
                                     <span className="text-lg sm:text-xl font-black text-zinc-900">${product.price.toFixed(2)} USD</span>
                                 </div>
                                 <div className="flex justify-between items-center pb-4 sm:pb-6 border-b border-zinc-200 border-dashed">
