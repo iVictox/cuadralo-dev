@@ -77,7 +77,7 @@ export default function IcebreakerModal({ onClose, targetProfile, onSuccess }) {
         message: message
       });
 
-      showToast("Mensaje enviado!", "success");
+      showToast("Mensaje enviado correctamente!", "success");
       if (onSuccess) onSuccess(response);
       if (onClose) onClose();
     } catch (error) {
@@ -359,7 +359,7 @@ export default function IcebreakerModal({ onClose, targetProfile, onSuccess }) {
                     ) : (
                       <>
                         <Sparkles size={18} />
-                        Enviar y Dar Like
+                        Enviar mensaje
                       </>
                     )}
                   </motion.button>

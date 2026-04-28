@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import EditProfileModal from "./EditProfileModal";
 import SettingsModal from "./SettingsModal";
 import ChatWindow from "./ChatWindow";
+import IcebreakerModal from "./IcebreakerModal";
 import ReportModal from "./ReportModal";
 import { getInterestInfo } from "@/utils/interests";
 import { useRouter } from "next/navigation";
@@ -24,6 +25,7 @@ export default function UserProfile({ username }) {
   const [showEdit, setShowEdit] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showDirectChat, setShowDirectChat] = useState(false);
+  const [showIcebreaker, setShowIcebreaker] = useState(false);
   const [reportingUser, setReportingUser] = useState(false);
 
   const fetchProfileAndPosts = async () => {
@@ -233,8 +235,15 @@ export default function UserProfile({ username }) {
                   </button>
 
                   <button
-                    onClick={() => setShowDirectChat(true)}
+                    onClick={() => {
+                      if (user.is_match) {
+                        setShowDirectChat(true);
+                      } else {
+                        setShowIcebreaker(true);
+                      }
+                    }}
                     className="p-4 md:p-5 bg-purple-100 dark:bg-purple-600 hover:bg-purple-200 dark:hover:bg-purple-500 text-purple-700 dark:text-white rounded-2xl transition-all active:scale-95 shadow-sm"
+                    title={user.is_match ? "Abrir chat" : "Enviar rompehielo"}
                   >
                     <MessageCircle size={24} fill="currentColor" className="dark:text-white text-purple-700" />
                   </button>
@@ -335,21 +344,30 @@ export default function UserProfile({ username }) {
       </AnimatePresence>
 
       <AnimatePresence>
-        {showDirectChat && (
+        {showDirectChat && user.is_match && (
           <div className="fixed inset-0 z-[400] bg-black/90 flex items-center justify-center">
             <div className="w-full h-full md:max-w-2xl md:h-[90vh] md:rounded-[2rem] overflow-hidden relative">
               <ChatWindow
-                chat={{
+                user={{
                   id: user.id,
                   name: user.name,
-                  photo: photos[0],
-                  // ✅ SOLUCIÓN: Si es match, isDirect es falso (Chat Gratis). Si no, es Rompehielos.
-                  isDirect: !user.is_match
+                  username: user.username,
+                  photo: photos[0]
                 }}
-                onBack={() => setShowDirectChat(false)}
+                onClose={() => setShowDirectChat(false)}
               />
             </div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showIcebreaker && (
+          <IcebreakerModal
+            targetProfile={user}
+            onClose={() => setShowIcebreaker(false)}
+            onSuccess={() => setShowIcebreaker(false)}
+          />
         )}
       </AnimatePresence>
       <AnimatePresence>
