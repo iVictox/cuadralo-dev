@@ -193,7 +193,7 @@ export default function VerifyPage() {
           </div>
 
           <div className="absolute bottom-12 left-16 text-white/30 text-sm font-bold tracking-widest uppercase">
-              © {new Date().getFullYear()} Cuadralo App
+              © {new Date().getFullYear()} Cuadralo
           </div>
       </div>
 
