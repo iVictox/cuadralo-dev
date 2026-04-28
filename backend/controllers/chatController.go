@@ -66,7 +66,7 @@ func GetMatches(c *fiber.Ctx) error {
 		}
 
 		if lastMsg.ID != 0 {
-			if lastMsg.Type == "image" {
+			if lastMsg.Type == "image" || lastMsg.Type == "image_once" {
 				dto.LastMessage = "📷 Foto"
 			} else {
 				dto.LastMessage = lastMsg.Content
@@ -136,14 +136,14 @@ func SendMessage(c *fiber.Ctx) error {
 				Action:     "rompehielo",
 				Message:    data.Content,
 			}
-			if data.Type == "image" {
+			if data.Type == "image" || data.Type == "image_once" {
 				newLike.Message = "📷 Te ha enviado una foto."
 			}
 			database.DB.Create(&newLike)
 		} else {
 			existingLike.Action = "rompehielo"
 			existingLike.Message = data.Content
-			if data.Type == "image" {
+			if data.Type == "image" || data.Type == "image_once" {
 				existingLike.Message = "📷 Te ha enviado una foto."
 			}
 			database.DB.Save(&existingLike)

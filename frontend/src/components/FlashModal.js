@@ -154,7 +154,7 @@ export default function FlashModal({ onClose, onSuccess }) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           transition={{ type: "spring", bounce: 0.3, duration: 0.5 }}
-          className="relative w-full max-w-4xl bg-cuadralo-cardDark dark:bg-[#150A21]/95 backdrop-blur-2xl rounded-[2rem] overflow-hidden border border-white/10 shadow-xl"
+          className="relative w-full max-w-[95%] sm:max-w-md lg:max-w-4xl max-h-[90vh] sm:max-h-[85vh] lg:max-h-none bg-cuadralo-cardDark dark:bg-[#150A21]/95 backdrop-blur-2xl rounded-[2rem] overflow-y-auto lg:overflow-visible border border-white/10 shadow-xl no-scrollbar"
         >
           <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-cuadralo-pink/50 to-transparent" />
           <div className="absolute -top-20 -left-20 w-40 h-40 bg-cuadralo-pink/20 rounded-full blur-[80px]" />
@@ -169,9 +169,9 @@ export default function FlashModal({ onClose, onSuccess }) {
               <motion.div 
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="flex flex-col items-center lg:items-start mb-6"
+                className="flex flex-col items-center lg:items-start mb-4 lg:mb-6"
               >
-                <div className="relative mb-4">
+                <div className="relative mb-2 lg:mb-4">
                   <motion.div 
                     animate={{ scale: [1, 1.1, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
@@ -192,7 +192,7 @@ export default function FlashModal({ onClose, onSuccess }) {
                   )}
                 </div>
 
-                <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                <h2 className="text-xl lg:text-2xl font-black text-white flex items-center gap-2">
                   Destellos <span className="text-cuadralo-pink">⚡</span>
                 </h2>
                 
@@ -230,14 +230,14 @@ export default function FlashModal({ onClose, onSuccess }) {
                   </div>
                 </motion.div>
               ) : (
-                <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-4">
                   {FLASH_OPTIONS.map((type) => (
-                    <div key={type.id} className="relative p-3 rounded-2xl bg-white/5 border border-white/10">
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${type.color} flex items-center justify-center mb-2 mx-auto`}>
-                        <type.icon size={18} className="text-white" fill="currentColor" />
+                    <div key={type.id} className="relative p-2 lg:p-3 rounded-2xl bg-white/5 border border-white/10">
+                      <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-gradient-to-br ${type.color} flex items-center justify-center mb-1.5 lg:mb-2 mx-auto`}>
+                        <type.icon size={16} className="text-white" fill="currentColor" />
                       </div>
-                      <p className="text-white text-center font-semibold text-sm">{type.name}</p>
-                      <p className="text-white/40 text-xs text-center">{type.durationText}</p>
+                      <p className="text-white text-center font-semibold text-[10px] lg:text-sm">{type.name}</p>
+                      <p className="text-white/40 text-[9px] lg:text-xs text-center">{type.durationText}</p>
                     </div>
                   ))}
                 </div>
@@ -317,7 +317,7 @@ export default function FlashModal({ onClose, onSuccess }) {
                     initial={{ opacity: 0, x: 20 }} 
                     animate={{ opacity: 1, x: 0 }} 
                     exit={{ opacity: 0, x: -20 }} 
-                    className="space-y-2 overflow-y-auto max-h-[50vh]"
+                    className="space-y-2 overflow-y-auto max-h-[40vh] lg:max-h-[50vh] pr-1 no-scrollbar"
                   >
                     {PACKAGES.map((pkg) => (
                       <motion.div 

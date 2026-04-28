@@ -45,7 +45,7 @@ export default function ChatList({ onChatSelect, onLoaded }) {
       }
       
       const likesData = await api.get("/likes/pending");
-      setLikes(likesData || []);
+      setLikes((likesData || []).filter(l => l.is_icebreaker));
     } catch (error) {
       console.error("Error chats:", error);
     } finally {

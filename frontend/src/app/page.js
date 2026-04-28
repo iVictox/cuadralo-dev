@@ -77,8 +77,18 @@ function MainAppContent() {
     if (!token) router.push("/login");
     else {
         checkNotifications();
+        const handleSocketEvent = (e) => {
+            const data = e.detail;
+            if (data.type === "new_message" || data.type === "messages_read" || data.type === "new_match" || data.type === "new_icebreaker") {
+                checkNotifications();
+            }
+        };
         const interval = setInterval(checkNotifications, 5000); 
-        return () => clearInterval(interval);
+        window.addEventListener("socket_event", handleSocketEvent);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener("socket_event", handleSocketEvent);
+        };
     }
   }, [router]);
 

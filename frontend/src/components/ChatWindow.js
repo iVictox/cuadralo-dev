@@ -1,18 +1,18 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, Send, Image as ImageIcon, Camera, Phone, Video, Info,
   MoreVertical, Check, CheckCheck, X, Clock, ShieldAlert,
   Download, Copy, Forward, Shield, User, ImageOff, Lock, Bookmark,
-  Flag, Eye, Trash2
+  Flag, Eye, Trash2, EyeOff
 } from "lucide-react";
 import { useSocket } from "@/context/SocketContext";
 import { api } from "@/utils/api";
 import ReportModal from "./ReportModal";
 import SquareLoader from "./SquareLoader";
-import ProfileDetailsModal from "./ProfileDetailsModal";
 
 // Componente para el mensaje individual
 const MessageItem = ({ msg, isMe, isLastMessage, onDelete, onToggleSave, onReport, onOpenPhoto }) => {
@@ -77,6 +77,20 @@ const MessageItem = ({ msg, isMe, isLastMessage, onDelete, onToggleSave, onRepor
       }
 
       if (isImageOnce) {
+        if (isMe && msg.is_viewed) {
+          return (
+            <div className="flex items-center gap-3 py-2 px-3">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-inner bg-white/10 text-white/50">
+                <EyeOff size={22} strokeWidth={2.5} />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[15px] font-black tracking-wide text-white/50">Abierta</span>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-white/40">Vista única</span>
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div 
             className="flex items-center gap-3 py-2 px-3 cursor-pointer group"
@@ -258,7 +272,7 @@ const ImagePreviewModal = ({ file, previewUrl, onClose, onSend }) => {
             {uploading ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
-              <Send size={22} className="translate-x-0.5 -translate-y-0.5" />
+              <Send size={22} />
             )}
           </button>
         </motion.div>
@@ -328,7 +342,9 @@ const PhotoModal = ({ photo, onClose, isMe, onToggleSave, onDelete, onReport }) 
 
 
 export default function ChatWindow({ user, onClose }) {
-  const { socket, connected } = useSocket();
+  const router = useRouter();
+  const { socket, onlineUsers } = useSocket();
+  const isOnline = onlineUsers ? onlineUsers.has(String(user.id)) : false;
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -344,7 +360,6 @@ export default function ChatWindow({ user, onClose }) {
   const [reportingMsg, setReportingMsg] = useState(null);
   const [showChatOptions, setShowChatOptions] = useState(false);
   const [viewingPhoto, setViewingPhoto] = useState(null);
-  const [showProfile, setShowProfile] = useState(false);
 
   // Estados para previsualización de imagen
   const [previewFile, setPreviewFile] = useState(null);
@@ -354,8 +369,10 @@ export default function ChatWindow({ user, onClose }) {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const isInitialLoad = useRef(true);
+
+  const scrollToBottom = (behavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
   // Cerrar menú de opciones al hacer click fuera
@@ -391,7 +408,6 @@ export default function ChatWindow({ user, onClose }) {
         console.error("Error cargando mensajes:", error);
       } finally {
         setLoading(false);
-        scrollToBottom();
       }
     };
 
@@ -399,14 +415,19 @@ export default function ChatWindow({ user, onClose }) {
   }, [user.id, socket]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (loading) return;
+    if (isInitialLoad.current) {
+      scrollToBottom("auto");
+      // Use setTimeout to ensure DOM has rendered messages before marking as loaded
+      setTimeout(() => { isInitialLoad.current = false; }, 50);
+    } else {
+      scrollToBottom("smooth");
+    }
+  }, [messages, loading]);
 
   useEffect(() => {
-    if (!socket) return;
-
-    const handleMessage = (event) => {
-      const data = JSON.parse(event.data);
+    const handleSocketEvent = (e) => {
+      const data = e.detail;
       if (data.type === "new_message") {
         const msg = data.payload;
         if (msg.sender_id === user.id || msg.receiver_id === user.id) {
@@ -415,7 +436,7 @@ export default function ChatWindow({ user, onClose }) {
             return [...prev, msg];
           });
           
-          if (msg.sender_id === user.id) {
+          if (msg.sender_id === user.id && socket?.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({
               type: "mark_chat_read",
               payload: { chat_id: user.id }
@@ -443,8 +464,8 @@ export default function ChatWindow({ user, onClose }) {
       }
     };
 
-    socket.addEventListener("message", handleMessage);
-    return () => socket.removeEventListener("message", handleMessage);
+    window.addEventListener("socket_event", handleSocketEvent);
+    return () => window.removeEventListener("socket_event", handleSocketEvent);
   }, [socket, user.id, currentUser]);
 
   const handleSendText = async (e) => {
@@ -572,7 +593,7 @@ export default function ChatWindow({ user, onClose }) {
             
             <div 
               className="flex items-center gap-3 cursor-pointer group"
-              onClick={() => setShowProfile(true)}
+              onClick={() => router.push(`/u/${user.username}`)}
             >
               <div className="relative">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-black/5 dark:bg-[#1a0b2e] border-2 border-transparent group-hover:border-cuadralo-pink transition-colors">
@@ -582,14 +603,20 @@ export default function ChatWindow({ user, onClose }) {
                     <div className="w-full h-full flex items-center justify-center text-gray-500 font-bold uppercase">{user.username?.charAt(0)}</div>
                   )}
                 </div>
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-[#150a21] rounded-full shadow-sm"></div>
+                {isOnline && (
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-[#150a21] rounded-full shadow-sm"></div>
+                )}
               </div>
               
               <div>
                 <h3 className="font-bold text-cuadralo-textLight dark:text-white text-sm sm:text-base leading-tight group-hover:text-cuadralo-pink transition-colors">
                   {user.name}
                 </h3>
-                <p className="text-[10px] sm:text-xs text-green-500 font-bold tracking-wide uppercase mt-0.5">En línea</p>
+                {isOnline ? (
+                  <p className="text-[10px] sm:text-xs text-green-500 font-bold tracking-wide uppercase mt-0.5">En línea</p>
+                ) : (
+                  <p className="text-[10px] sm:text-xs text-gray-400 font-bold tracking-wide uppercase mt-0.5">Desconectado</p>
+                )}
               </div>
             </div>
           </div>
@@ -722,7 +749,7 @@ export default function ChatWindow({ user, onClose }) {
                 {uploading ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 ) : (
-                  <Send size={22} className="translate-x-0.5 -translate-y-0.5" />
+                  <Send size={22} />
                 )}
               </button>
             ) : (
@@ -731,7 +758,7 @@ export default function ChatWindow({ user, onClose }) {
                 disabled
                 className="w-[52px] h-[52px] rounded-full bg-black/5 dark:bg-white/5 text-gray-300 dark:text-gray-600 transition-all shrink-0 flex items-center justify-center cursor-not-allowed border border-black/5 dark:border-white/5"
               >
-                <Send size={22} className="translate-x-0.5 -translate-y-0.5" />
+                <Send size={22} />
               </button>
             )}
           </form>
@@ -772,15 +799,6 @@ export default function ChatWindow({ user, onClose }) {
                  targetType={reportingMsg.id === user.id ? "user" : "message"} 
                  targetId={reportingMsg.id} 
                  onClose={() => setReportingMsg(null)} 
-              />
-          )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-          {showProfile && (
-              <ProfileDetailsModal 
-                 profile={user} 
-                 onClose={() => setShowProfile(false)} 
               />
           )}
       </AnimatePresence>

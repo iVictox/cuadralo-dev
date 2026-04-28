@@ -119,7 +119,7 @@ export default function IcebreakerModal({ onClose, targetProfile, onSuccess }) {
 
   if (loadingData) {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
         <div className="animate-pulse text-white">Cargando...</div>
       </div>
     );
@@ -128,7 +128,7 @@ export default function IcebreakerModal({ onClose, targetProfile, onSuccess }) {
   return (
     <>
       <div 
-        className="fixed inset-0 z-[100] items-center justify-center p-3 md:p-6 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[5000] items-center justify-center p-3 md:p-6 bg-black/60 backdrop-blur-sm"
         style={{ display: showCheckout ? 'none' : 'flex' }}
       >
         <motion.div 

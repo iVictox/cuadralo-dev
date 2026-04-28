@@ -10,7 +10,7 @@ import { getInterestInfo } from "@/utils/interests";
 import ChatWindow from "@/components/ChatWindow"; 
 import IcebreakerModal from "@/components/IcebreakerModal"; 
 
-export default function ProfileDetailsModal({ profile, onClose }) {
+export default function ProfileDetailsModal({ profile, onClose, hideIcebreaker = false }) {
     const [fullProfile, setFullProfile] = useState(profile);
     const [loading, setLoading] = useState(false);
     const [activePhoto, setActivePhoto] = useState(0);
@@ -141,13 +141,14 @@ export default function ProfileDetailsModal({ profile, onClose }) {
                     {/* 📄 INFO DEL PERFIL INFERIOR */}
                     <div className="px-6 pb-10 relative -mt-16 z-10 flex-1">
                         
-                        {/* ✅ BOTÓN DE MENSAJE FLOTANTE - Abre IcebreakerModal */}
-                        <button 
-                            onClick={() => setShowIcebreaker(true)}
-                            className="absolute -top-6 right-6 w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center text-white shadow-[0_10px_20px_rgba(59,130,246,0.5)] hover:scale-110 active:scale-95 transition-all z-40 border-2 border-[#140520]"
-                        >
-                            <MessageCircle size={26} fill="currentColor" />
-                        </button>
+                        {!hideIcebreaker && (
+                            <button 
+                                onClick={() => setShowIcebreaker(true)}
+                                className="absolute -top-6 right-6 w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center text-white shadow-[0_10px_20px_rgba(59,130,246,0.5)] hover:scale-110 active:scale-95 transition-all z-40 border-2 border-[#140520]"
+                            >
+                                <MessageCircle size={26} fill="currentColor" />
+                            </button>
+                        )}
                         
                         <div className="mb-6 pr-16">
                             <h2 className="text-4xl font-black text-white flex items-end gap-3 drop-shadow-md tracking-tighter uppercase">

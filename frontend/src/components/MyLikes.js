@@ -6,8 +6,8 @@ import { Lock, Heart, Loader2, Zap, Crown, Sparkles, MessageCircle, ArrowRight }
 import { api } from "@/utils/api";
 import { useToast } from "@/context/ToastContext";
 import PrimeModal from "@/components/PrimeModal"; 
-import BoostModal from "@/components/BoostModal"; 
 import FlashModal from "@/components/FlashModal"; 
+import ProfileDetailsModal from "@/components/ProfileDetailsModal";
 
 export default function MyLikes({ onLoaded }) {
   const { showToast } = useToast();
@@ -18,13 +18,23 @@ export default function MyLikes({ onLoaded }) {
   const [view, setView] = useState("likes");
   
   const [showPrime, setShowPrime] = useState(false);
-  const [showBoost, setShowBoost] = useState(false);
   const [showFlash, setShowFlash] = useState(false);
   const [flashInfo, setFlashInfo] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   useEffect(() => {
     fetchData();
     fetchFlashInfo();
+
+    const handleSocketEvent = (e) => {
+        const data = e.detail;
+        if (data.type === "new_like" || data.type === "new_icebreaker" || data.type === "new_match") {
+            fetchData();
+        }
+    };
+    
+    window.addEventListener("socket_event", handleSocketEvent);
+    return () => window.removeEventListener("socket_event", handleSocketEvent);
   }, []);
 
   const fetchFlashInfo = async () => {
@@ -74,14 +84,17 @@ export default function MyLikes({ onLoaded }) {
     }
   };
 
-  // ✅ NUEVO: Función para responder a un Rompehielo desde el Inbox
-  const handleInboxAction = async (targetId, action) => {
+  // ✅ NUEVO: Función para responder a un Rompehielo o Like desde el Inbox
+  const handleAction = async (targetId, action, type) => {
       try {
           // action puede ser "right" (Match) o "left" (Descartar)
           await api.post("/swipe", { target_id: targetId, action: action });
           
-          // Lo removemos de la bandeja visualmente
-          setRompehielos((prev) => prev.filter((r) => r.id !== targetId));
+          if (type === "inbox") {
+              setRompehielos((prev) => prev.filter((r) => r.id !== targetId));
+          } else {
+              setLikes((prev) => prev.filter((r) => r.id !== targetId));
+          }
           
           if (action === "right") {
               showToast("¡Es un Match! Ahora pueden chatear gratis.", "success");
@@ -160,36 +173,51 @@ export default function MyLikes({ onLoaded }) {
                     </div>
                 )}
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 animate-fade-in-up">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 animate-fade-in-up">
                     {likes.map((user) => (
                     <div 
                         key={user.id} 
-                        className="relative aspect-[3/4] rounded-[2rem] overflow-hidden bg-cuadralo-cardLight dark:bg-cuadralo-cardDark group cursor-pointer border border-black/5 dark:border-white/5 hover:border-cuadralo-pink/50 transition-all shadow-glass-light dark:shadow-glass-dark"
-                        onClick={() => { if (user.locked) setShowPrime(true); }}
+                        className="relative aspect-[3/4] rounded-[2rem] overflow-hidden bg-cuadralo-cardLight dark:bg-cuadralo-cardDark group border border-black/5 dark:border-white/5 transition-all shadow-glass-light dark:shadow-glass-dark hover:shadow-[0_8px_30px_rgba(242,19,142,0.15)]"
                     >
-                        <img 
-                            src={user.img || "https://via.placeholder.com/300"} 
-                            alt="User" 
-                            className={`w-full h-full object-cover transition-all duration-700 ${user.locked ? "blur-xl scale-110 opacity-60" : "group-hover:scale-105"}`} 
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                        <div className="absolute inset-0 cursor-pointer" onClick={() => { if (user.locked) setShowPrime(true); else setSelectedUser(user); }}>
+                            <img 
+                                src={user.img || "https://via.placeholder.com/300"} 
+                                alt="User" 
+                                className={`w-full h-full object-cover transition-all duration-700 ${user.locked ? "blur-2xl scale-125 opacity-40" : "group-hover:scale-110"}`} 
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none" />
+                        </div>
 
                         {user.locked ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center z-10 p-4 text-center">
-                                <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="w-14 h-14 bg-gradient-to-tr from-yellow-400 via-yellow-200 to-amber-600 rounded-full flex items-center justify-center text-black shadow-[0_0_20px_rgba(234,179,8,0.5)] mb-4 p-0.5">
+                            <div className="absolute inset-0 flex flex-col items-center justify-center z-10 p-4 text-center pointer-events-none">
+                                <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="w-14 h-14 bg-gradient-to-tr from-yellow-400 via-yellow-200 to-amber-600 rounded-full flex items-center justify-center text-black shadow-[0_0_20px_rgba(234,179,8,0.5)] mb-3 p-0.5">
                                     <div className="w-full h-full bg-[#111] rounded-full flex items-center justify-center">
                                         <Lock size={20} className="text-yellow-400" />
                                     </div>
                                 </motion.div>
-                                <span className="text-[11px] font-black text-yellow-400 uppercase tracking-widest mb-1 shadow-black drop-shadow-md">VIP</span>
+                                <span className="text-xs font-black text-yellow-400 uppercase tracking-[0.2em] mb-1 shadow-black drop-shadow-md">VIP</span>
                             </div>
                         ) : (
-                            <div className="absolute bottom-5 left-5 z-10">
-                                <h3 className="text-lg font-black text-white flex items-center gap-2 leading-none mb-1.5 drop-shadow-md">
+                            <div className="absolute bottom-0 left-0 right-0 p-4 z-10 pointer-events-none">
+                                <h3 className="text-xl font-black text-white flex items-center gap-2 leading-none mb-1 drop-shadow-lg">
                                     {user.name}, {user.age}
                                 </h3>
-                                <div className="flex items-center gap-1.5 text-[10px] text-cuadralo-pink font-black uppercase tracking-widest drop-shadow-md">
+                                <div className="flex items-center gap-1.5 text-[10px] text-cuadralo-pink font-black uppercase tracking-widest drop-shadow-md mb-4">
                                     <Heart size={12} fill="currentColor" /> Le gustas
+                                </div>
+                                <div className="flex gap-2 pointer-events-auto opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-300">
+                                   <button 
+                                      onClick={(e) => { e.stopPropagation(); handleAction(user.id, "left", "like"); }}
+                                      className="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white py-2.5 rounded-xl text-xs font-bold transition-colors"
+                                   >
+                                      Ocultar
+                                   </button>
+                                   <button 
+                                      onClick={(e) => { e.stopPropagation(); handleAction(user.id, "right", "like"); }}
+                                      className="flex-[2] bg-gradient-to-r from-cuadralo-pink to-purple-600 shadow-[0_4px_15px_rgba(242,19,142,0.4)] hover:scale-105 active:scale-95 text-white py-2.5 rounded-xl text-xs font-bold transition-all"
+                                   >
+                                      Dar Like
+                                   </button>
                                 </div>
                             </div>
                         )}
@@ -198,40 +226,55 @@ export default function MyLikes({ onLoaded }) {
                 </div>
             </>
           ) : (
-            <EmptyState title="Buscando tu media naranja..." subtitle="Aún no hay likes nuevos." onBoost={() => setShowBoost(true)} />
+            <EmptyState title="Buscando tu media naranja..." subtitle="Aún no hay likes nuevos." onBoost={() => setShowFlash(true)} />
           )
       )}
 
       {/* === BANDEJA DE ROMPEHIELOS === */}
       {view === "messages" && (
           rompehielos.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in-up">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-fade-in-up">
                   {rompehielos.map((req) => (
-                      <div key={req.id} className="bg-white dark:bg-[#150a21] border border-blue-500/20 rounded-3xl p-5 shadow-lg flex gap-4 items-start relative overflow-hidden group">
-                          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 blur-2xl rounded-full -mr-10 -mt-10 pointer-events-none" />
+                      <div 
+                          key={req.id} 
+                          className="bg-white/40 dark:bg-[#1a0b2e]/60 backdrop-blur-2xl border border-blue-500/30 rounded-3xl p-5 shadow-[0_10px_40px_rgba(59,130,246,0.1)] hover:shadow-[0_15px_50px_rgba(59,130,246,0.2)] transition-all flex flex-col sm:flex-row gap-5 items-start relative overflow-hidden group cursor-pointer"
+                          onClick={() => setSelectedUser(req)}
+                      >
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 blur-[50px] rounded-full -mr-10 -mt-10 pointer-events-none transition-transform group-hover:scale-150" />
                           
-                          <img src={req.img} alt={req.name} className="w-16 h-16 rounded-2xl object-cover shadow-md z-10" />
-                          <div className="flex-1 z-10">
-                              <h3 className="font-black text-lg leading-none mb-1">{req.name}, <span className="text-gray-500 font-medium">{req.age}</span></h3>
-                              <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mb-3">Conexión Directa</p>
+                          <div className="relative shrink-0">
+                             <img src={req.img || "https://via.placeholder.com/150"} alt={req.name} className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover shadow-xl z-10 border-2 border-white/10 dark:border-white/5 group-hover:scale-105 transition-transform" />
+                             <div className="absolute -bottom-2 -right-2 bg-blue-500 text-white p-1.5 rounded-xl shadow-lg rotate-12 group-hover:rotate-0 transition-transform">
+                                <Sparkles size={14} fill="currentColor" />
+                             </div>
+                          </div>
+                          
+                          <div className="flex-1 z-10 w-full flex flex-col h-full">
+                              <div className="flex justify-between items-start mb-2">
+                                 <div>
+                                    <h3 className="font-black text-xl leading-none text-cuadralo-textLight dark:text-white group-hover:text-blue-500 transition-colors">{req.name}, <span className="text-cuadralo-textMutedLight dark:text-gray-400 font-medium">{req.age}</span></h3>
+                                    <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest mt-1 opacity-80">Rompehielo Directo</p>
+                                 </div>
+                              </div>
                               
-                              <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-3 text-sm text-gray-700 dark:text-gray-300 font-medium italic">
-                                  "{req.message}"
+                              <div className="bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 rounded-2xl p-3 text-sm text-cuadralo-textLight dark:text-gray-200 font-medium italic relative mb-4 flex-1">
+                                  <div className="absolute -left-1 -top-2 text-2xl text-blue-500 opacity-30 pointer-events-none">"</div>
+                                  <span className="relative z-10">{req.message}</span>
+                                  <div className="absolute -right-1 -bottom-4 text-2xl text-blue-500 opacity-30 pointer-events-none">"</div>
                               </div>
 
-                              {/* ✅ BOTONES DE ACCIÓN CONECTADOS */}
-                              <div className="mt-4 flex gap-2">
+                              <div className="flex gap-2 w-full mt-auto">
                                   <button 
-                                      onClick={() => handleInboxAction(req.id, "right")}
-                                      className="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-cuadralo-pink to-purple-600 text-white font-bold text-xs py-2.5 rounded-xl shadow-md hover:scale-105 active:scale-95 transition-all"
-                                  >
-                                      Dar Like <ArrowRight size={14} />
-                                  </button>
-                                  <button 
-                                      onClick={() => handleInboxAction(req.id, "left")}
-                                      className="flex-1 bg-gray-100 dark:bg-black/50 text-gray-500 hover:text-red-500 font-bold text-xs py-2.5 rounded-xl hover:scale-105 active:scale-95 transition-all border border-transparent hover:border-red-500/30"
+                                      onClick={(e) => { e.stopPropagation(); handleAction(req.id, "left", "inbox"); }}
+                                      className="flex-1 bg-black/5 dark:bg-white/5 hover:bg-red-500/10 dark:hover:bg-red-500/20 text-gray-500 hover:text-red-500 font-bold text-xs py-2.5 rounded-xl transition-all border border-transparent hover:border-red-500/30 backdrop-blur-sm"
                                   >
                                       Descartar
+                                  </button>
+                                  <button 
+                                      onClick={(e) => { e.stopPropagation(); handleAction(req.id, "right", "inbox"); }}
+                                      className="flex-[2] flex items-center justify-center gap-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold text-xs py-2.5 rounded-xl shadow-[0_5px_15px_rgba(59,130,246,0.3)] hover:scale-[1.02] active:scale-95 transition-all"
+                                  >
+                                      Dar Like <ArrowRight size={14} />
                                   </button>
                               </div>
                           </div>
@@ -239,14 +282,14 @@ export default function MyLikes({ onLoaded }) {
                   ))}
               </div>
           ) : (
-              <EmptyState title="Tu bandeja está limpia" subtitle="Los Rompehielos directos aparecerán aquí." onBoost={() => setShowBoost(true)} />
+              <EmptyState title="Tu bandeja está limpia" subtitle="Los Rompehielos directos aparecerán aquí." onBoost={() => setShowFlash(true)} />
           )
       )}
 
       <AnimatePresence>
         {showPrime && <PrimeModal onClose={() => setShowPrime(false)} />}
-        {showBoost && <BoostModal onClose={() => setShowBoost(false)} />}
-        {showFlash && <FlashModal onClose={() => setShowFlash(false)} />}
+        {showFlash && <FlashModal onClose={() => { setShowFlash(false); fetchFlashInfo(); }} />}
+        {selectedUser && <ProfileDetailsModal profile={selectedUser} onClose={() => setSelectedUser(null)} hideIcebreaker={true} />}
       </AnimatePresence>
     </motion.div>
   );
