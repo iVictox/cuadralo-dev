@@ -149,12 +149,12 @@ export default function FeedPost({ post, onDelete, onViewStory, isModal = false,
                         </div>
                         <div 
                             className="cursor-pointer"
-                            onClick={() => {
-                                if (hasStory) onViewStory(post.user.id);
-                                else router.push(`/u/${post.user.username}`);
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/u/${post.user.username}`);
                             }}
                         >
-                            <h4 className="font-bold text-cuadralo-textLight dark:text-purple-100 text-[15px] tracking-tight">
+                            <h4 className="font-bold text-cuadralo-textLight dark:text-purple-100 text-[15px] tracking-tight hover:text-cuadralo-pink transition-colors">
                                 {post.user?.name}
                             </h4>
                             <p className="text-xs text-cuadralo-textMutedLight dark:text-purple-400">@{post.user?.username}</p>

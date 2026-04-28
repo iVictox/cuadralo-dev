@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, Loader2, RefreshCw, Crown, Sparkles } from "lucide-react"; 
 import StoriesBar from "./StoriesBar"; 
 import FeedPost from "./FeedPost";
@@ -21,6 +21,11 @@ export default function SocialFeed({ onUploadClick, isActive = true, onLoaded, o
   const [stories, setStories] = useState([]); 
   const [myStories, setMyStories] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const fetchingRef = useRef(false);
+  const [scrollRef, setScrollRef] = useState(null);
   
   const [viewingUserStories, setViewingUserStories] = useState(null);
   const [showPrime, setShowPrime] = useState(false);
@@ -33,45 +38,79 @@ export default function SocialFeed({ onUploadClick, isActive = true, onLoaded, o
   const [activeTab, setActiveTab] = useState("for_you");
   const [hasInitialFetch, setHasInitialFetch] = useState(false);
 
-  const fetchData = async (tab = activeTab, isRefresh = false) => {
+  // Reset page when tab changes
+  useEffect(() => {
+    setPage(1);
+    setHasMore(true);
+    setPosts([]);
+  }, [activeTab]);
+
+  const fetchData = async (tab = activeTab, isRefresh = false, targetPage = 1) => {
+    if (fetchingRef.current && !isRefresh) return;
+    
     try {
-      if (!isRefresh) setLoading(true);
+      if (!isRefresh && targetPage === 1) setLoading(true);
+      if (targetPage > 1) {
+        setIsFetchingMore(true);
+        fetchingRef.current = true;
+      }
+
+      if (targetPage === 1) {
+        try {
+          const status = await api.get("/premium/status");
+          setIsPrime(status.is_prime);
+        } catch (e) {}
+
+        try {
+          const userStr = localStorage.getItem("user");
+          const me = userStr ? JSON.parse(userStr) : null;
+          setCurrentUser(me);
+        } catch (e) {}
+
+        try {
+          const notifs = await api.get("/notifications");
+          if (Array.isArray(notifs)) {
+              setUnreadNotifsCount(notifs.filter(n => !n.is_read).length);
+          }
+        } catch (e) {}
+
+        try {
+          const storiesResponse = await api.get("/social/stories");
+          if (storiesResponse) {
+              setStories(storiesResponse.feed || []);
+              setMyStories(storiesResponse.my_stories || []);
+          }
+        } catch (e) {}
+      }
 
       try {
-        const status = await api.get("/premium/status");
-        setIsPrime(status.is_prime);
-      } catch (e) { console.error("Error premium status:", e); }
-
-      try {
-        const userStr = localStorage.getItem("user");
-        const me = userStr ? JSON.parse(userStr) : null;
-        setCurrentUser(me);
-      } catch (e) { console.error("Error user parse:", e); }
-
-      try {
-        const notifs = await api.get("/notifications");
-        if (Array.isArray(notifs)) {
-            setUnreadNotifsCount(notifs.filter(n => !n.is_read).length);
-        }
-      } catch (e) { console.error("Error notifications:", e); }
-
-      try {
-        const feedData = await api.get(`/social/feed?tab=${tab}`);
+        const feedData = await api.get(`/social/feed?tab=${tab}&page=${targetPage}&limit=10`);
         const postsArray = Array.isArray(feedData) ? feedData : [];
-        setPosts(postsArray);
+        
+        if (postsArray.length < 10) {
+          setHasMore(false);
+        }
+
+        setPosts(prev => {
+          let newList;
+          if (targetPage === 1) {
+            newList = postsArray;
+          } else {
+            const existingIds = new Set(prev.map(p => p.id));
+            const uniqueNewPosts = postsArray.filter(p => !existingIds.has(p.id));
+            newList = [...prev, ...uniqueNewPosts];
+          }
+
+          if (newList.length > 30) {
+            return newList.slice(newList.length - 30);
+          }
+          return newList;
+        });
         
         if (onPostsUpdate) {
           onPostsUpdate(postsArray);
         }
       } catch (e) { console.error("Error feed:", e); }
-
-      try {
-        const storiesResponse = await api.get("/social/stories");
-        if (storiesResponse) {
-            setStories(storiesResponse.feed || []);
-            setMyStories(storiesResponse.my_stories || []);
-        }
-      } catch (e) { console.error("Error stories:", e); }
 
       setHasInitialFetch(true);
     } catch (error) {
@@ -79,6 +118,8 @@ export default function SocialFeed({ onUploadClick, isActive = true, onLoaded, o
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setIsFetchingMore(false);
+      fetchingRef.current = false;
       if (onLoaded) onLoaded();
     }
   };
@@ -86,10 +127,9 @@ export default function SocialFeed({ onUploadClick, isActive = true, onLoaded, o
   // Fetch when the component becomes active or tab changes
   useEffect(() => {
       if (isActive) {
-          // If we never fetched, show loader. If we already have cache, fetch silently in background.
-          fetchData(activeTab, !hasInitialFetch);
+          fetchData(activeTab, !hasInitialFetch, page);
       }
-  }, [isActive, hasInitialFetch, activeTab]);
+  }, [isActive, hasInitialFetch, activeTab, page]);
 
   // WebSockets para tiempo real
   useEffect(() => {
@@ -182,11 +222,35 @@ export default function SocialFeed({ onUploadClick, isActive = true, onLoaded, o
       };
   }, [currentUser]);
 
+  // Infinite Scroll Observer
+  useEffect(() => {
+    if (!hasMore || isFetchingMore || loading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Añadimos una pequeña verificación extra para evitar el bucle infinito
+        if (entries[0].isIntersecting && hasMore && !fetchingRef.current && !loading) {
+          setTimeout(() => {
+            setPage(prev => prev + 1);
+          }, 500);
+        }
+      },
+      { threshold: 0.01, rootMargin: "100px" } // Detectamos un poco antes para que sea más suave
+    );
+
+    const target = document.getElementById("feed-bottom-anchor");
+    if (target) observer.observe(target);
+
+    return () => {
+      if (target) observer.unobserve(target);
+    };
+  }, [hasMore, isFetchingMore, posts]);
+
   const handleRefresh = () => { setRefreshing(true); fetchData(activeTab, true); };
   const handlePostDeleted = (deletedPostId) => { setPosts(prev => prev.filter(p => p.id !== deletedPostId)); };
 
   // ✅ NUEVO: Lógica de Playlist para las Historias
-  const handleViewStory = (targetUserId) => {
+  const handleViewStory = async (targetUserId) => {
       let fullPlaylist = [];
 
       // 1. Agregamos nuestra propia historia primero (si tenemos)
@@ -212,7 +276,33 @@ export default function SocialFeed({ onUploadClick, isActive = true, onLoaded, o
       }
 
       // 3. Buscamos dónde hizo clic el usuario para empezar desde ahí
-      const targetIndex = fullPlaylist.findIndex(g => String(g.user?.id) === String(targetUserId));
+      let targetIndex = fullPlaylist.findIndex(g => String(g.user?.id) === String(targetUserId));
+
+      // 4. Si NO está en la lista (no lo seguimos), cargamos sus historias individualmente
+      if (targetIndex === -1) {
+          try {
+              const cleanId = String(targetUserId).trim();
+              console.log("🚀 handleViewStory -> Cargando para ID:", cleanId);
+              const res = await api.get(`/social/user-stories/${cleanId}`);
+              
+              if (res && res.stories && res.stories.length > 0) {
+                  fullPlaylist.push({
+                      user: res.user,
+                      stories: res.stories,
+                      isOwner: false
+                  });
+                  targetIndex = fullPlaylist.length - 1;
+              } else {
+                  console.log("ℹ️ El usuario no tiene historias activas o la respuesta fue vacía.");
+                  return; 
+              }
+          } catch (e) {
+              console.error("❌ ERROR en handleViewStory:", e);
+              if (e.message) console.error("📝 Mensaje:", e.message);
+              if (e.stack) console.error("🔍 Stack:", e.stack);
+              return;
+          }
+      }
 
       if (targetIndex !== -1) {
           setViewingUserStories({
@@ -255,10 +345,10 @@ export default function SocialFeed({ onUploadClick, isActive = true, onLoaded, o
       {loading ? (
          <div className="flex justify-center py-10"><SquareLoader size="medium" /></div>
       ) : (
-         <div className="w-full max-w-[600px] mx-auto px-4 flex flex-col gap-8 pb-20">
+          <div className="w-full max-w-[600px] mx-auto px-4 flex flex-col gap-8 pb-20">
             <AnimatePresence mode="popLayout">
                 {posts.map((post, i) => (
-                  <motion.div key={post.id} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ delay: i * 0.1, duration: 0.4, ease: "easeOut" }}>
+                  <motion.div key={post.id} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ delay: i * 0.05, duration: 0.4, ease: "easeOut" }}>
                       <FeedPost 
                         post={post} 
                         onDelete={() => handlePostDeleted(post.id)} 
@@ -269,7 +359,7 @@ export default function SocialFeed({ onUploadClick, isActive = true, onLoaded, o
                 ))}
             </AnimatePresence>
 
-            {posts.length === 0 && (
+            {posts.length === 0 && !loading && (
                <div className="text-center text-cuadralo-textMutedLight dark:text-cuadralo-textMutedDark py-16 px-6 font-medium">
                   {activeTab === "following" 
                       ? "Aún no sigues a nadie o tus amigos no han publicado nada. ¡Usa el buscador para conectarte!" 
@@ -277,11 +367,25 @@ export default function SocialFeed({ onUploadClick, isActive = true, onLoaded, o
                </div>
             )}
             
-            {posts.length > 0 && (
-                <button onClick={handleRefresh} className="mx-auto flex items-center gap-2 text-xs text-cuadralo-textMutedLight dark:text-cuadralo-textMutedDark hover:text-cuadralo-pink transition-colors py-6 mb-10 bg-white/5 dark:bg-black/20 px-6 rounded-full backdrop-blur-md">
-                    {refreshing ? <Loader2 className="animate-spin" size={16}/> : <RefreshCw size={16}/>} Actualizar Feed
-                </button>
+            {isFetchingMore && (
+                <div className="flex flex-col items-center justify-center h-32 gap-3 opacity-60">
+                    <SquareLoader size="small" />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-cuadralo-pink animate-pulse">Cargando más momentos...</span>
+                </div>
             )}
+
+            {!hasMore && posts.length > 0 && (
+                <div className="flex flex-col items-center justify-center py-16 px-6">
+                    <div className="w-12 h-[1px] bg-gradient-to-r from-transparent via-cuadralo-pink/30 to-transparent mb-6" />
+                    <div className="flex items-center gap-2 text-cuadralo-textMutedLight dark:text-gray-500 text-[10px] font-black uppercase tracking-[0.3em]">
+                        <Sparkles size={12} className="text-cuadralo-pink/50" />
+                        Estás al día
+                    </div>
+                </div>
+            )}
+
+            {/* Anchor for infinite scroll */}
+            <div id="feed-bottom-anchor" className="h-20 w-full" />
          </div>
       )}
 

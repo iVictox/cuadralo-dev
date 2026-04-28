@@ -5,6 +5,7 @@ import (
 	"cuadralo-backend/models"
 	"cuadralo-backend/websockets"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,7 +17,9 @@ import (
 
 func GetSocialFeed(c *fiber.Ctx) error {
 	myId := uint(c.Locals("userId").(float64))
-	tab := c.Query("tab", "for_you")
+	page := c.QueryInt("page", 1)
+	limit := c.QueryInt("limit", 10)
+	offset := (page - 1) * limit
 
 	var posts []models.Post
 
@@ -30,10 +33,10 @@ func GetSocialFeed(c *fiber.Ctx) error {
 			return c.JSON([]models.Post{})
 		}
 
-		query.Where("user_id IN ?", followingIds).Find(&posts)
-	} else {
-		query.Find(&posts)
+		query = query.Where("user_id IN ?", followingIds)
 	}
+
+	query.Limit(limit).Offset(offset).Find(&posts)
 
 	if len(posts) == 0 {
 		return c.JSON([]models.Post{})
@@ -466,8 +469,19 @@ func ToggleCommentLike(c *fiber.Ctx) error {
 func GetActiveStories(c *fiber.Ctx) error {
 	myId := uint(c.Locals("userId").(float64))
 
+	// Seguidos + Matches
 	var followingIds []uint
 	database.DB.Model(&models.Follow{}).Where("follower_id = ?", myId).Pluck("following_id", &followingIds)
+
+	var matches []models.Match
+	database.DB.Where("user1_id = ? OR user2_id = ?", myId, myId).Find(&matches)
+	matchSet := make(map[uint]bool)
+	for _, m := range matches {
+		if m.User1ID == myId { matchSet[m.User2ID] = true } else { matchSet[m.User1ID] = true }
+	}
+	for id := range matchSet {
+		followingIds = append(followingIds, id)
+	}
 
 	var myStories []models.Story
 	database.DB.Where("user_id = ? AND expires_at > ?", myId, time.Now()).Order("created_at asc").Find(&myStories)
@@ -532,6 +546,69 @@ func GetActiveStories(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"my_stories": myStories,
 		"feed":       result,
+	})
+}
+
+func GetUserStories(c *fiber.Ctx) error {
+	fmt.Println("[STORY DEBUG] Entrando a GetUserStories")
+	
+	val := c.Locals("userId")
+	if val == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Sesión no encontrada en locals"})
+	}
+	
+	myId := uint(val.(float64))
+	idParam := c.Params("id")
+
+	fmt.Printf("[STORY DEBUG] ID Param: %s, Solicitado por: %d\n", idParam, myId)
+
+	if idParam == "" || idParam == "undefined" || idParam == "null" {
+		return c.Status(400).JSON(fiber.Map{"error": "ID de usuario inválido o vacío"})
+	}
+
+	uid, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		fmt.Printf("[STORY DEBUG] Error strconv: %v\n", err)
+		return c.Status(400).JSON(fiber.Map{"error": "El ID debe ser un número válido"})
+	}
+
+	var stories []models.Story
+	dbErr := database.DB.Preload("User").Where("user_id = ? AND expires_at > ?", uint(uid), time.Now()).Order("created_at asc").Find(&stories).Error
+	if dbErr != nil {
+		fmt.Printf("[STORY DEBUG] Error DB: %v\n", dbErr)
+		return c.Status(500).JSON(fiber.Map{"error": "Error interno al buscar historias en DB"})
+	}
+
+	fmt.Printf("[STORY DEBUG] Historias encontradas para %d: %d\n", uid, len(stories))
+
+	if len(stories) == 0 {
+		return c.JSON(fiber.Map{"stories": []models.Story{}, "all_seen": true})
+	}
+
+	storyIDs := make([]uint, 0)
+	for _, s := range stories {
+		storyIDs = append(storyIDs, s.ID)
+	}
+
+	var myViews []models.StoryView
+	database.DB.Where("user_id = ? AND story_id IN ?", myId, storyIDs).Find(&myViews)
+	seenMap := make(map[uint]bool)
+	for _, v := range myViews {
+		seenMap[v.StoryID] = true
+	}
+
+	allSeen := true
+	for i := range stories {
+		stories[i].Seen = seenMap[stories[i].ID]
+		if !stories[i].Seen {
+			allSeen = false
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"user":     stories[0].User,
+		"stories":  stories,
+		"all_seen": allSeen,
 	})
 }
 

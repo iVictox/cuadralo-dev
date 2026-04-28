@@ -58,6 +58,7 @@ func Setup(app *fiber.App) {
 	protected.Post("/social/comments/:id/like", controllers.ToggleCommentLike)
 
 	protected.Get("/social/stories", controllers.GetActiveStories)
+	protected.Get("/social/user-stories/:id", controllers.GetUserStories)
 	protected.Post("/social/stories", controllers.CreateStory)
 	protected.Delete("/social/stories/:id", controllers.DeleteStory)
 	protected.Post("/social/stories/:id/view", controllers.ViewStory)

@@ -1115,3 +1115,4 @@ func AdminSetVIPStatus(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"message": "Estado VIP actualizado exitosamente"})
 }
+

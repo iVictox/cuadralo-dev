@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, MessageCircle, Zap, Crown, Sparkles, Heart } from "lucide-react";
 import { api } from "@/utils/api";
-import BoostModal from "@/components/BoostModal";
+import FlashModal from "@/components/FlashModal";
 import PrimeModal from "@/components/PrimeModal";
 import SquareLoader from "./SquareLoader";
 
@@ -15,7 +15,7 @@ export default function ChatList({ onChatSelect, onLoaded }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   
-  const [showBoost, setShowBoost] = useState(false);
+  const [showFlash, setShowFlash] = useState(false);
   const [showPrime, setShowPrime] = useState(false);
 
   // ✅ NUEVO: La lista se actualiza automáticamente si entra un mensaje o leen uno tuyo
@@ -92,7 +92,7 @@ export default function ChatList({ onChatSelect, onLoaded }) {
         
         {conversations.length < 5 && (
             <div 
-                onClick={() => setShowBoost(true)}
+                onClick={() => setShowFlash(true)}
                 className="mx-6 mb-6 p-4 rounded-2xl bg-gradient-to-r from-cuadralo-pink/10 to-purple-600/10 border border-cuadralo-pink/20 flex items-center gap-4 cursor-pointer hover:scale-[1.01] transition-all"
             >
                 <div className="p-2.5 bg-cuadralo-pink rounded-xl text-white shadow-lg shadow-cuadralo-pink/20">
@@ -227,7 +227,7 @@ export default function ChatList({ onChatSelect, onLoaded }) {
       </div>
 
       <AnimatePresence>
-         {showBoost && <BoostModal onClose={() => setShowBoost(false)} />}
+         {showFlash && <FlashModal onClose={() => setShowFlash(false)} />}
          {showPrime && <PrimeModal onClose={() => setShowPrime(false)} />}
       </AnimatePresence>
     </div>
