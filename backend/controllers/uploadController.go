@@ -2,47 +2,46 @@ package controllers
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
+	"cuadralo-backend/services"
 )
 
 func UploadFile(c *fiber.Ctx) error {
-	// 1. Leer el archivo del formulario
-	file, err := c.FormFile("image")
+	// 1. Obtener tipo de archivo y ID del formulario
+	fileType := c.FormValue("type", "misc")
+	id := c.FormValue("id", "0")
+
+	// 2. Obtener el archivo del formulario
+	fileHeader, err := c.FormFile("image")
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "No se subió ninguna imagen"})
 	}
 
-	// 2. Validar tamaño (Max 5MB)
-	if file.Size > 5*1024*1024 {
+	// 3. Validar tamaño (Max 5MB)
+	if fileHeader.Size > 5*1024*1024 {
 		return c.Status(400).JSON(fiber.Map{"error": "La imagen es muy pesada (Max 5MB)"})
 	}
 
-	// 3. Asegurar que la carpeta 'uploads' exista
-	if _, err := os.Stat("./uploads"); os.IsNotExist(err) {
-		os.MkdirAll("./uploads", os.ModePerm)
+	// 4. Abrir el archivo para obtener el reader
+	src, err := fileHeader.Open()
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Error al abrir el archivo"})
+	}
+	defer src.Close()
+
+	// 5. Obtener el tipo de contenido
+	contentType := fileHeader.Header.Get("Content-Type")
+
+	// 6. Subir a Cloudflare R2 usando el servicio
+	url, err := services.UploadFile(src, fileHeader.Filename, contentType, fileType, id)
+	if err != nil {
+		fmt.Println("Error subiendo a R2:", err)
+		return c.Status(500).JSON(fiber.Map{"error": "Error interno subiendo el archivo"})
 	}
 
-	// 4. Generar nombre único
-	uniqueId := uuid.New()
-	filename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), uniqueId.String(), filepath.Ext(file.Filename))
-
-	// 5. Guardar en carpeta ./uploads
-	savePath := fmt.Sprintf("./uploads/%s", filename)
-	if err := c.SaveFile(file, savePath); err != nil {
-		fmt.Println("Error guardando archivo:", err) // Log para debug
-		return c.Status(500).JSON(fiber.Map{"error": "Error interno guardando el archivo"})
-	}
-
-	// 6. Devolver la URL completa
-	// ✅ MODIFICADO: Ahora apunta a tu servidor Fiber local en el puerto 8080
-	fullUrl := fmt.Sprintf("http://localhost:8080/uploads/%s", filename)
-
+	// 7. Devolver la URL pública de R2
 	return c.JSON(fiber.Map{
-		"url": fullUrl,
+		"url": url,
 	})
 }

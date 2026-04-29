@@ -144,9 +144,6 @@ func main() {
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, Upgrade, Connection",
 	}))
 
-	// Servir archivos estáticos (imágenes subidas)
-	app.Static("/uploads", "./uploads")
-
 	// Middleware para WebSocket Upgrade
 	app.Use("/ws", func(c *fiber.Ctx) error {
 		if websocket.IsWebSocketUpgrade(c) {

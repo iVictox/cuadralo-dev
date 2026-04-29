@@ -20,6 +20,7 @@ func GetSocialFeed(c *fiber.Ctx) error {
 	page := c.QueryInt("page", 1)
 	limit := c.QueryInt("limit", 10)
 	offset := (page - 1) * limit
+	tab := c.Query("tab", "all")
 
 	var posts []models.Post
 
