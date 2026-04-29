@@ -85,9 +85,11 @@ export const api = {
     return handleResponse(res, endpoint);
   },
 
-  upload: async (file) => {
+  upload: async (file, type = "profile", id = "0") => {
     const formData = new FormData();
     formData.append("image", file);
+    formData.append("type", type);
+    formData.append("id", id);
 
     const token = localStorage.getItem("token");
     const res = await fetch(`${API_URL}/upload`, {

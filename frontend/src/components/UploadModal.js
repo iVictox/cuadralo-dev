@@ -173,7 +173,7 @@ export default function UploadModal({ onClose }) {
         }
         setLoading(true);
         try {
-            const imageUrls = await Promise.all(files.map(f => api.upload(f)));
+            const imageUrls = await Promise.all(files.map(f => api.upload(f, "post")));
             await api.post("/social/posts", { image_url: imageUrls.join(","), caption, location });
             showToast("¡Post publicado!");
             onClose();

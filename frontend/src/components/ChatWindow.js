@@ -504,7 +504,7 @@ export default function ChatWindow({ user, onClose }) {
 
   const handleConfirmImageSend = async (file, caption, isOnce) => {
     try {
-      const imageUrl = await api.upload(file);
+      const imageUrl = await api.upload(file, "chat");
       
       // Enviar imagen
       const res = await api.post("/messages", {

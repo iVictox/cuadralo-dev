@@ -5,6 +5,7 @@ import (
 	"cuadralo-backend/database"
 	"cuadralo-backend/models"
 	"cuadralo-backend/routes"
+	"cuadralo-backend/services"
 	"cuadralo-backend/websockets"
 	"fmt"
 	"log"
@@ -13,9 +14,16 @@ import (
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Cargar variables de entorno
+	godotenv.Load(".env")
+	
+	// Inicializar servicio R2
+	services.InitR2Service()
+	
 	// 1. Conectar a Base de Datos
 	database.Connect()
 

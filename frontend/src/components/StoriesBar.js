@@ -33,7 +33,7 @@ export default function StoriesBar({ stories, myStories, currentUser, onViewStor
       setUploading(true);
       
       try {
-          const imageUrl = await api.upload(finalFile);
+          const imageUrl = await api.upload(finalFile, "story");
           await api.post("/social/stories", { image_url: imageUrl });
           showToast("¡Historia subida con éxito! 🎉", "success");
           if(onRefresh) onRefresh(); 

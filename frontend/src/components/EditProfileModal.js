@@ -68,7 +68,7 @@ export default function EditProfileModal({ user, onClose, onUpdate }) {
       setUploading(true);
       showToast("Subiendo imagen...", "info");
       try {
-          const imageUrl = await api.upload(file);
+          const imageUrl = await api.upload(file, "profile");
           if (imageUrl) {
             setPhotos(prev => [...prev, imageUrl]);
             showToast("Foto añadida", "success");

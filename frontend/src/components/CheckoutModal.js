@@ -102,7 +102,7 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
 
       setLoading(true);
       try {
-          const receiptUrl = await api.upload(receiptFile);
+          const receiptUrl = await api.upload(receiptFile, "misc");
 
           // Ahora el envío fuerza la separación de rompehielos vs destellos clásicos
           const paymentData = {

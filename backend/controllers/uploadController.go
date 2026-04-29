@@ -9,8 +9,14 @@ import (
 
 func UploadFile(c *fiber.Ctx) error {
 	// 1. Obtener tipo de archivo y ID del formulario
-	fileType := c.FormValue("type", "misc")
-	id := c.FormValue("id", "0")
+	fileType := c.FormValue("type")
+	if fileType == "" {
+		fileType = "profile" // valor por defecto si no se envía
+	}
+	id := c.FormValue("id")
+	if id == "" {
+		id = "0"
+	}
 
 	// 2. Obtener el archivo del formulario
 	fileHeader, err := c.FormFile("image")

@@ -3,6 +3,7 @@ package controllers
 import (
 	"cuadralo-backend/database"
 	"cuadralo-backend/models"
+	"cuadralo-backend/services"
 	"cuadralo-backend/websockets"
 	"fmt"
 	"strconv"
@@ -176,8 +177,15 @@ func DeletePost(c *fiber.Ctx) error {
 	database.DB.Where("post_id = ?", post.ID).Delete(&models.Notification{})
 	database.DB.Where("post_id = ?", post.ID).Delete(&models.PostLike{})
 	database.DB.Exec("DELETE FROM comment_likes WHERE comment_id IN (SELECT id FROM comments WHERE post_id = ?)", post.ID)
-	database.DB.Where("post_id = ? AND parent_id IS NOT NULL", post.ID).Delete(&models.Comment{})
 	database.DB.Where("post_id = ?", post.ID).Delete(&models.Comment{})
+
+	// Eliminar imagen de R2 si existe
+	if post.ImageURL != "" {
+		key := services.ExtractKeyFromURL(post.ImageURL)
+		if key != "" {
+			services.DeleteFile(key)
+		}
+	}
 
 	if err := database.DB.Delete(&post).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Error interno: No se pudo eliminar la publicación."})
@@ -657,6 +665,14 @@ func DeleteStory(c *fiber.Ctx) error {
 	}
 
 	database.DB.Where("story_id = ?", story.ID).Delete(&models.StoryView{})
+
+	// Eliminar imagen de R2 si existe
+	if story.ImageURL != "" {
+		key := services.ExtractKeyFromURL(story.ImageURL)
+		if key != "" {
+			services.DeleteFile(key)
+		}
+	}
 
 	if err := database.DB.Delete(&story).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Error interno al borrar la historia"})

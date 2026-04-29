@@ -228,7 +228,7 @@ export default function RegisterPage() {
       setError("");
 
       try {
-          const serverUrl = await api.upload(file);
+          const serverUrl = await api.upload(file, "profile");
           setFormData(prev => ({ ...prev, photos: [...prev.photos, serverUrl] }));
       } catch (err) {
           setError("Error subiendo la imagen. Intenta con otra.");

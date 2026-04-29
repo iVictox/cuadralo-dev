@@ -14,13 +14,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/joho/godotenv"
 )
 
 var r2Client *s3.Client
 var bucketName string
 var publicURL string
 
-func init() {
+func InitR2Service() {
+	godotenv.Load(".env")
+	
 	accountID := os.Getenv("R2_ACCOUNT_ID")
 	accessKeyID := os.Getenv("R2_ACCESS_KEY_ID")
 	secretAccessKey := os.Getenv("R2_SECRET_ACCESS_KEY")
@@ -42,23 +45,21 @@ func init() {
 	})
 }
 
-// UploadFile sube un archivo a R2 y devuelve la URL pública
 func UploadFile(file io.Reader, filename string, contentType string, fileType string, id string) (string, error) {
-	ext := filepath.Ext(filename)
 	uniqueID := fmt.Sprintf("%d_%s", time.Now().UnixNano(), filepath.Base(filename))
 	
 	var key string
 	switch fileType {
 	case "profile":
-		key = fmt.Sprintf("profiles/%s/%s%s", id, uniqueID, ext)
+		key = fmt.Sprintf("profiles/%s", uniqueID)
 	case "post":
-		key = fmt.Sprintf("posts/%s/%s%s", id, uniqueID, ext)
+		key = fmt.Sprintf("posts/%s", uniqueID)
 	case "story":
-		key = fmt.Sprintf("stories/%s/%s%s", id, uniqueID, ext)
+		key = fmt.Sprintf("stories/%s", uniqueID)
 	case "chat":
-		key = fmt.Sprintf("chats/%s/%s%s", id, uniqueID, ext)
+		key = fmt.Sprintf("chats/%s", uniqueID)
 	default:
-		key = fmt.Sprintf("misc/%s%s", uniqueID, ext)
+		key = uniqueID
 	}
 
 	_, err := r2Client.PutObject(context.TODO(), &s3.PutObjectInput{

@@ -3,6 +3,7 @@ package controllers
 import (
 	"cuadralo-backend/database"
 	"cuadralo-backend/models"
+	"cuadralo-backend/services"
 	"encoding/json"
 	"strings"
 
@@ -186,10 +187,24 @@ func ChangePassword(c *fiber.Ctx) error {
 
 func DeleteAccount(c *fiber.Ctx) error {
 	userId := uint(c.Locals("userId").(float64))
+	
+	// Get user to access photo URL before deletion
+	var user models.User
+	database.DB.First(&user, userId)
+	
 	tx := database.DB.Begin()
 	tx.Where("user_id = ?", userId).Delete(&models.Post{})
 	tx.Where("follower_id = ? OR following_id = ?", userId, userId).Delete(&models.Follow{})
 	tx.Where("from_user_id = ? OR to_user_id = ?", userId, userId).Delete(&models.Like{})
+	
+	// Delete profile photo from R2 if exists
+	if user.Photo != "" {
+		key := services.ExtractKeyFromURL(user.Photo)
+		if key != "" {
+			services.DeleteFile(key)
+		}
+	}
+	
 	tx.Delete(&models.User{}, userId)
 	tx.Commit()
 	return c.JSON(fiber.Map{"message": "Adiós"})
