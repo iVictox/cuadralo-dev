@@ -140,6 +140,22 @@ func main() {
 		}
 	}()
 
+	// 7. Cron Job: Sincronizar tasa BCV automáticamente (cada hora)
+	go func() {
+		// Ejecutar una vez al iniciar
+		if err := controllers.SyncBCVRate(); err != nil {
+			log.Printf("❌ Error en sincronización inicial BCV: %v", err)
+		}
+		
+		// Luego cada hora
+		for {
+			time.Sleep(1 * time.Hour)
+			if err := controllers.SyncBCVRate(); err != nil {
+				log.Printf("❌ Error sincronizando tasa BCV: %v", err)
+			}
+		}
+	}()
+
 	// 5. Configurar Servidor Fiber
 	app := fiber.New(fiber.Config{
 		BodyLimit: 15 * 1024 * 1024, // 15 MB

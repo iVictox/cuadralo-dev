@@ -206,6 +206,7 @@ func Setup(app *fiber.App) {
 	superAdmin.Delete("/users/:id", controllers.DeleteUserAdmin)
 
 	superAdmin.Put("/settings", controllers.UpdateSystemSettings)
+	superAdmin.Post("/settings/sync-bcv", controllers.SyncBCVRateHandler)
 	superAdmin.Get("/requests", controllers.GetAdminRequests)
 	superAdmin.Put("/requests/:id", controllers.ProcessAdminRequest)
 	superAdmin.Get("/staff", controllers.GetAdminStaff)

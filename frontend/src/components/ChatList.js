@@ -17,10 +17,42 @@ export default function ChatList({ onChatSelect, onLoaded }) {
   
   const [showFlash, setShowFlash] = useState(false);
   const [showPrime, setShowPrime] = useState(false);
+  const [flashInfo, setFlashInfo] = useState(null);
+
+  const fetchFlashInfo = async () => {
+    try {
+      const res = await api.get("/flash/info");
+      if (res.has_flash) {
+        setFlashInfo(res.flash);
+      }
+    } catch (error) {
+      console.error("Error cargando flash:", error);
+    }
+  };
+
+  const formatFlashTime = (seconds) => {
+    if (!seconds || seconds <= 0) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  useEffect(() => {
+    if (!flashInfo?.is_active) return;
+    const interval = setInterval(() => {
+      setFlashInfo(prev => {
+        if (!prev) return prev;
+        const newTime = Math.max(0, prev.time_remaining - 1);
+        return { ...prev, time_remaining: newTime, is_active: newTime > 0 };
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [flashInfo?.is_active]);
 
   // ✅ NUEVO: La lista se actualiza automáticamente si entra un mensaje o leen uno tuyo
   useEffect(() => {
     fetchData();
+    fetchFlashInfo();
 
     const handleSocketEvent = (e) => {
         const data = e.detail;
@@ -69,7 +101,28 @@ export default function ChatList({ onChatSelect, onLoaded }) {
   return (
     <div className="flex flex-col h-full bg-cuadralo-bgLight dark:bg-cuadralo-bgDark text-cuadralo-textLight dark:text-cuadralo-textDark transition-colors duration-300">
       <div className="px-6 pt-16 pb-4 flex justify-between items-center bg-cuadralo-bgLight/95 dark:bg-cuadralo-bgDark/95 backdrop-blur-md sticky top-0 z-10 border-b border-black/5 dark:border-white/5">
-        <h1 className="text-3xl font-black tracking-tighter uppercase italic">Chats</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-black tracking-tighter uppercase italic">Chats</h1>
+          {flashInfo?.is_active && (
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setShowFlash(true)}
+              className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-md border border-white/40 animate-pulse overflow-hidden"
+            >
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
+                className="flex flex-col items-center justify-center"
+              >
+                <Zap size={14} className="text-white fill-current" strokeWidth={2.5} />
+                <span className="text-[9px] text-white font-bold leading-none">
+                  {formatFlashTime(flashInfo?.time_remaining || 0)}
+                </span>
+              </motion.div>
+            </motion.button>
+          )}
+        </div>
         <button onClick={() => setShowPrime(true)} className="p-2 bg-yellow-500/10 rounded-full hover:bg-yellow-500/20 transition-colors border border-yellow-500/20">
             <Crown size={20} className="text-yellow-500" />
         </button>

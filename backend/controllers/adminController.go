@@ -4,7 +4,11 @@ import (
 	"cuadralo-backend/database"
 	"cuadralo-backend/models"
 	"cuadralo-backend/websockets"
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -796,6 +800,77 @@ func UpdateSystemSettings(c *fiber.Ctx) error {
 
 	LogAdminAction(adminID, "update_settings", nil, "Configuración del sistema actualizada")
 	return c.JSON(fiber.Map{"message": "Configuraciones guardadas y activadas con éxito."})
+}
+
+// SyncBCVRate fetches the current BCV rate from external API and updates the database
+func SyncBCVRate() error {
+	// Fetch rate from external API
+	resp, err := http.Get("https://ve.dolarapi.com/v1/dolares/oficial")
+	if err != nil {
+		log.Printf("❌ Error fetching BCV rate: %v", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("❌ Error reading BCV API response: %v", err)
+		return err
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		log.Printf("❌ Error parsing BCV API response: %v", err)
+		return err
+	}
+
+	// Get the promedio (average) rate
+	promedio, ok := data["promedio"].(float64)
+	if !ok {
+		log.Printf("❌ Invalid BCV rate format in API response")
+		return fmt.Errorf("invalid BCV rate format")
+	}
+
+	// Update or create the setting in database
+	var setting models.Setting
+	if err := database.DB.First(&setting, "key = ?", "bs_exchange_rate").Error; err != nil {
+		// Setting doesn't exist, create it
+		setting = models.Setting{
+			Key:   "bs_exchange_rate",
+			Value: fmt.Sprintf("%.2f", promedio),
+		}
+		database.DB.Create(&setting)
+		log.Printf("✅ BCV rate created: %.2f Bs/USD", promedio)
+	} else {
+		// Update existing setting
+		oldValue := setting.Value
+		setting.Value = fmt.Sprintf("%.2f", promedio)
+		database.DB.Save(&setting)
+		log.Printf("✅ BCV rate updated: %s -> %.2f Bs/USD", oldValue, promedio)
+	}
+
+	return nil
+}
+
+// SyncBCVRateHandler is an HTTP handler for manual BCV rate sync (admin only)
+func SyncBCVRateHandler(c *fiber.Ctx) error {
+	if err := SyncBCVRate(); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Error sincronizando tasa BCV",
+		})
+	}
+	
+	// Get the updated rate to return
+	var setting models.Setting
+	database.DB.First(&setting, "key = ?", "bs_exchange_rate")
+	
+	adminID := uint(c.Locals("userId").(float64))
+	LogAdminAction(adminID, "sync_bcv_rate", nil, "Tasa BCV sincronizada manualmente")
+	
+	return c.JSON(fiber.Map{
+		"message": "Tasa BCV sincronizada exitosamente",
+		"rate":    setting.Value,
+	})
 }
 
 func MigrateInventory(c *fiber.Ctx) error {

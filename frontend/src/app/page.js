@@ -76,6 +76,17 @@ function MainAppContent() {
     const token = localStorage.getItem("token");
     if (!token) router.push("/login");
     else {
+        // Verify token is still valid and user is not suspended
+        const verifySession = async () => {
+            try {
+                await api.get("/matches");
+            } catch (err) {
+                // If suspended, the API handler will redirect to /suspended
+                console.error("Session verification failed:", err);
+            }
+        };
+        verifySession();
+        
         checkNotifications();
         const handleSocketEvent = (e) => {
             const data = e.detail;

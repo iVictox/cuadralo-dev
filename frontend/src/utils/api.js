@@ -19,7 +19,7 @@ const isPublicEndpoint = (endpoint) => {
     return publicEndpoints.some(ep => endpoint.includes(ep));
 };
 
-// Función genérica para manejar respuestas y errores 401
+// Función genérica para manejar respuestas y errores 401/403
 const handleResponse = async (res, endpoint) => {
     if (res.status === 401) {
         localStorage.removeItem("token");
@@ -28,6 +28,27 @@ const handleResponse = async (res, endpoint) => {
             window.location.href = "/login";
         }
         throw new Error("Sesión expirada o inválida");
+    }
+
+    if (res.status === 403) {
+        const errorData = await res.json().catch(() => ({}));
+        if (errorData.is_suspended) {
+            // Store suspension data for the suspended page
+            const suspensionData = {
+                reason: errorData.error || "No se proporcionó un motivo",
+                suspendedUntil: errorData.suspended_until || null,
+                isPermanent: !errorData.suspended_until
+            };
+            localStorage.setItem("suspension_data", JSON.stringify(suspensionData));
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            
+            // Redirect to suspended page if not already there
+            if (!window.location.pathname.includes("/suspended")) {
+                window.location.href = "/suspended";
+            }
+            throw new Error(errorData.error || "Cuenta suspendida");
+        }
     }
 
     if (!res.ok) {

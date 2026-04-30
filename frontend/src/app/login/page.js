@@ -38,7 +38,14 @@ export default function LoginPage() {
         router.push("/");
     } catch (err) {
         console.error("Error login:", err);
-        setError("Correo o contraseña incorrectos.");
+        // Check if user is suspended
+        if (err.message && err.message.includes("suspendida")) {
+            // The API handler will have already stored suspension data and redirected
+            // But just in case, we show the error
+            setError(err.message);
+        } else {
+            setError("Correo o contraseña incorrectos.");
+        }
         setIsLoading(false);
     }
   };

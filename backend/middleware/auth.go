@@ -76,10 +76,15 @@ func IsAuthenticated(c *fiber.Ctx) error {
 				"suspension_reason": "",
 			})
 		} else {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-				"error":        "Tu cuenta ha sido suspendida. " + user.SuspensionReason,
-				"is_suspended": true,
-			})
+			response := fiber.Map{
+				"error":         "Tu cuenta ha sido suspendida. " + user.SuspensionReason,
+				"is_suspended":  true,
+				"suspension_reason": user.SuspensionReason,
+			}
+			if user.SuspendedUntil != nil {
+				response["suspended_until"] = user.SuspendedUntil.Format(time.RFC3339)
+			}
+			return c.Status(fiber.StatusForbidden).JSON(response)
 		}
 	}
 

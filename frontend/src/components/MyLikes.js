@@ -119,7 +119,28 @@ export default function MyLikes({ onLoaded }) {
       className="w-full h-full text-cuadralo-textLight dark:text-white pt-20 pb-28 px-4 overflow-y-auto max-w-5xl mx-auto scrollbar-hide [&::-webkit-scrollbar]:hidden transition-colors duration-300"
     >
       <div className="text-center mb-6 animate-fade-in">
-          <h2 className="text-2xl font-black tracking-tighter mb-1">Tu radar de conexiones</h2>
+          <div className="flex items-center justify-center gap-3 mb-1">
+              <h2 className="text-2xl font-black tracking-tighter">Tu radar de conexiones</h2>
+              {flashInfo?.is_active && (
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowFlash(true)}
+                  className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-md border border-white/40 animate-pulse overflow-hidden"
+                >
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                    className="flex flex-col items-center justify-center"
+                  >
+                    <Zap size={14} className="text-white fill-current" strokeWidth={2.5} />
+                    <span className="text-[9px] text-white font-bold leading-none">
+                      {formatFlashTime(flashInfo?.time_remaining || 0)}
+                    </span>
+                  </motion.div>
+                </motion.button>
+              )}
+          </div>
           {flashInfo?.is_active && (
             <motion.button
               initial={{ opacity: 0, y: -10 }}

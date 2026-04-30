@@ -231,14 +231,15 @@ func Login(c *fiber.Ctx) error {
 				"suspension_reason": "",
 			})
 		} else {
-			msg := "Tu cuenta ha sido suspendida y no puedes iniciar sesión."
-			if user.SuspensionReason != "" {
-				msg += " Motivo: " + user.SuspensionReason
+			response := fiber.Map{
+				"error":        "Tu cuenta ha sido suspendida y no puedes iniciar sesión. " + user.SuspensionReason,
+				"is_suspended": true,
+				"suspension_reason": user.SuspensionReason,
 			}
 			if user.SuspendedUntil != nil {
-				msg += fmt.Sprintf(". Expiración: %s", user.SuspendedUntil.Format("02/01/2006 15:04"))
+				response["suspended_until"] = user.SuspendedUntil.Format(time.RFC3339)
 			}
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": msg, "is_suspended": true})
+			return c.Status(fiber.StatusForbidden).JSON(response)
 		}
 	}
 
@@ -589,7 +590,15 @@ func GoogleLogin(c *fiber.Ctx) error {
 				"suspension_reason": "",
 			})
 		} else {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Tu cuenta ha sido suspendida.", "is_suspended": true})
+			response := fiber.Map{
+				"error":        "Tu cuenta ha sido suspendida.",
+				"is_suspended": true,
+				"suspension_reason": user.SuspensionReason,
+			}
+			if user.SuspendedUntil != nil {
+				response["suspended_until"] = user.SuspendedUntil.Format(time.RFC3339)
+			}
+			return c.Status(fiber.StatusForbidden).JSON(response)
 		}
 	}
 

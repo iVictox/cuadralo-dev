@@ -31,20 +31,7 @@ export default function AdminSettings() {
       }
     };
 
-    const autoFetchRate = async () => {
-      try {
-        const res = await fetch("https://ve.dolarapi.com/v1/dolares/oficial");
-        const data = await res.json();
-        if (data && data.promedio) {
-          setSettings(prev => ({ ...prev, bs_exchange_rate: data.promedio.toString() }));
-        }
-      } catch (err) {
-        console.error("Error fetching BCV rate:", err);
-      }
-    };
-
     fetchSettings();
-    autoFetchRate();
   }, []);
 
   const handleChange = (e) => {
@@ -55,13 +42,13 @@ export default function AdminSettings() {
   const fetchExternalRate = async () => {
     setFetchingRate(true);
     try {
-        const res = await fetch("https://ve.dolarapi.com/v1/dolares/oficial");
-        const data = await res.json();
-        if (data && data.promedio) {
-            setSettings(prev => ({ ...prev, bs_exchange_rate: data.promedio.toString() }));
+        const data = await api.post("/admin/settings/sync-bcv");
+        if (data && data.rate) {
+            setSettings(prev => ({ ...prev, bs_exchange_rate: data.rate }));
         }
     } catch (err) {
-        console.error(err);
+        console.error("Error syncing BCV rate:", err);
+        alert("Error sincronizando la tasa BCV");
     } finally {
         setFetchingRate(false);
     }
