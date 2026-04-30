@@ -53,6 +53,13 @@ const handleResponse = async (res, endpoint) => {
 
     if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
+        if (errorData.needsRegister) {
+            // Si el usuario necesita registrarse, pasar los datos especiales
+            const err = new Error(errorData.error || "Usuario no registrado");
+            err.needsRegister = true;
+            err.googleData = errorData.googleData;
+            throw err;
+        }
         if (errorData.error) {
           throw new Error(errorData.error);
         }

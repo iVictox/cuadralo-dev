@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -34,14 +34,43 @@ export default function RegisterPage() {
   const [availability, setAvailability] = useState({ username: null, email: null });
   const [checking, setChecking] = useState({ username: false, email: false });
   const [invalidChars, setInvalidChars] = useState({ name: false, username: false, email: false, password: false });
+  const [googleData, setGoogleData] = useState(null);
   const checkTimeoutRef = useRef({ username: null, email: null });
   
   const [formData, setFormData] = useState({
-      name: "", username: "", email: "", password: "", confirmPassword: "",
-      birthDate: "", gender: "", 
-      photos: [], 
-      bio: "", interests: [], preferences: { ageRange: [18, 30], distance: 50, show: "Todos" }
+    name: "", username: "", email: "", password: "", confirmPassword: "",
+    birthDate: "", gender: "",
+    photos: [],
+    bio: "", interests: [], preferences: { ageRange: [18, 30], distance: 50, show: "Todos" }
   });
+
+  // Verificar si viene de Google
+  useEffect(() => {
+    const storedGoogleData = localStorage.getItem("googleData");
+    if (storedGoogleData) {
+      try {
+        const parsed = JSON.parse(storedGoogleData);
+        setGoogleData(parsed);
+        // SOLO poner email (bloqueado). NO llenar name, username, photos
+        setFormData({
+          name: "", // VACÍO - que lo edite el usuario
+          username: "", // VACÍO - que lo edite el usuario
+          email: parsed.email || "", // Único campo lleno (bloqueado)
+          password: "",
+          confirmPassword: "",
+          birthDate: "",
+          gender: "",
+          photos: [], // VACÍO - que suba su foto
+          bio: "",
+          interests: [],
+          preferences: { ageRange: [18, 30], distance: 50, show: "Todos" }
+        });
+        localStorage.removeItem("googleData");
+      } catch (e) {
+        console.error("Error parsing Google data:", e);
+      }
+    }
+  }, []);
 
   const checkAvailability = useCallback(async (field, value) => {
       if (!value || value.length < 3) {
@@ -107,30 +136,36 @@ export default function RegisterPage() {
   const prevStep = () => { setError(""); setStep(prev => prev - 1); };
 
   const loginWithGoogle = useGoogleLogin({
-    onSuccess: (codeResponse) => {
+    onSuccess: async (codeResponse) => {
         setIsLoading(true);
-        fetch(`https://www.googleapis.com/oauth2/v1/userinfo?access_token=${codeResponse.access_token}`, {
-            headers: { Authorization: `Bearer ${codeResponse.access_token}`, Accept: 'application/json' }
-        })
-        .then((res) => res.json())
-        .then((data) => {
-            setFormData(prev => ({
-                ...prev,
-                name: data.name,
-                email: data.email,
-                photos: data.picture ? [data.picture] : [], 
-                username: data.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '') + Math.floor(Math.random() * 100),
-                password: Math.random().toString(36).slice(-12) + "A1!", 
-                confirmPassword: ""
-            }));
-            setStep(1);
+        try {
+            // Intentar login con Google
+            const response = await api.post("/login/google", {
+                access_token: codeResponse.access_token
+            });
+            // Si existe, hace login directo
+            localStorage.setItem("token", response.token);
+            localStorage.setItem("user", JSON.stringify(response.user));
+            router.push("/");
+        } catch (err) {
+            console.error("Error Google Register:", err);
+            // Si no está registrado, guardar datos y continuar registro
+            if (err.needsRegister && err.googleData) {
+                setGoogleData(err.googleData);
+                setFormData(prev => ({
+                    ...prev,
+                    name: err.googleData.name || "",
+                    email: err.googleData.email || "",
+                    photos: err.googleData.picture ? [err.googleData.picture] : [],
+                    username: err.googleData.email ? err.googleData.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '') + Math.floor(Math.random() * 100) : "",
+                }));
+                // NO avanzar paso - dejar en 0 para que edite nombre y username
+                setIsLoading(false);
+                return;
+            }
+            setError(err.error || "Error al registrarse con Google");
             setIsLoading(false);
-        })
-        .catch((err) => {
-            console.error(err);
-            setError("Error al obtener los datos de Google");
-            setIsLoading(false);
-        });
+        }
     },
     onError: (error) => {
         console.error('Login Failed:', error);
@@ -181,11 +216,20 @@ export default function RegisterPage() {
   const handleRegisterStart = async (e) => {
     e.preventDefault();
     
-    if (invalidChars.name || invalidChars.username || invalidChars.email || invalidChars.password) {
+    if (invalidChars.name || invalidChars.username || invalidChars.email || (!googleData && invalidChars.password)) {
         return setError("Caracteres no válidos detectados. Evita emojis y símbolos especiales.");
     }
-    if (formData.password !== formData.confirmPassword) return setError("Las contraseñas no coinciden");
-    if (formData.password.length < 6) return setError("La contraseña debe tener al menos 6 caracteres");
+    
+    // Si viene de Google, validar que el correo sea el mismo
+    if (googleData) {
+        if (formData.email !== googleData.email) {
+            return setError("El correo debe coincidir con el de tu cuenta de Google");
+        }
+    } else {
+        // Si no viene de Google, validar contraseña
+        if (formData.password !== formData.confirmPassword) return setError("Las contraseñas no coinciden");
+        if (formData.password.length < 6) return setError("La contraseña debe tener al menos 6 caracteres");
+    }
     
     if (formData.username.length < 3) return setError("El usuario debe tener al menos 3 caracteres");
     if (formData.email.length < 5) return setError("Ingresa un correo válido");
@@ -281,6 +325,11 @@ export default function RegisterPage() {
                       }
                   };
                   delete payload.confirmPassword;
+
+                  // Si viene de Google, agregar google_id
+                  if (googleData && googleData.sub) {
+                      payload.google_id = googleData.sub;
+                  }
 
                   await api.post("/register", payload);
                   setTimeout(() => router.push("/login"), 1000);
@@ -401,21 +450,33 @@ export default function RegisterPage() {
                   {step === 0 && (
                       <motion.div key="s0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                           
-                          <form onSubmit={handleRegisterStart} className="space-y-5">
-                              <FloatingInput label="Nombre completo" icon={<User size={20}/>} value={formData.name} onChange={handleNameChange} invalid={invalidChars.name} />
-                              <FloatingInput label="Usuario (@)" icon={<span className="font-black text-lg text-cuadralo-pink">@</span>} value={formData.username} onChange={handleUsernameChange} isLower availability={availability.username} checking={checking.username} invalid={invalidChars.username} />
-                              <FloatingInput label="Correo electrónico" icon={<Mail size={20}/>} type="email" value={formData.email} onChange={handleEmailChange} availability={availability.email} checking={checking.email} invalid={invalidChars.email} />
-                              <div className="grid grid-cols-2 gap-4">
-                                  <FloatingInput label="Contraseña" icon={<Lock size={20}/>} type="password" value={formData.password} onChange={handlePasswordChange} invalid={invalidChars.password} />
-                                  <FloatingInput label="Confirmar" icon={<Lock size={20}/>} type="password" value={formData.confirmPassword} onChange={(v) => handleChange("confirmPassword", v)} />
-                              </div>
+                       <form onSubmit={handleRegisterStart} className="space-y-5">
+                               <FloatingInput label="Nombre completo" icon={<User size={20}/>} value={formData.name} onChange={handleNameChange} invalid={invalidChars.name} />
+                               <FloatingInput label="Usuario (@)" icon={<span className="font-black text-lg text-cuadralo-pink">@</span>} value={formData.username} onChange={handleUsernameChange} isLower availability={availability.username} checking={checking.username} invalid={invalidChars.username} />
+                               <FloatingInput 
+                                   label="Correo electrónico" 
+                                   icon={<Mail size={20}/>} 
+                                   type="email" 
+                                   value={formData.email} 
+                                   onChange={handleEmailChange} 
+                                   availability={availability.email} 
+                                   checking={checking.email} 
+                                   invalid={invalidChars.email}
+                                   readOnly={!!googleData}
+                               />
+                               {!googleData && (
+                                   <div className="grid grid-cols-2 gap-4">
+                                       <FloatingInput label="Contraseña" icon={<Lock size={20}/>} type="password" value={formData.password} onChange={handlePasswordChange} invalid={invalidChars.password} />
+                                       <FloatingInput label="Confirmar" icon={<Lock size={20}/>} type="password" value={formData.confirmPassword} onChange={(v) => handleChange("confirmPassword", v)} />
+                                   </div>
+                               )}
 
-                              {error && <ErrorMessage msg={error} />}
+                               {error && <ErrorMessage msg={error} />}
 
-                              <button type="submit" className="w-full py-5 bg-cuadralo-textLight dark:bg-white text-cuadralo-bgLight dark:text-black rounded-2xl font-black text-lg shadow-xl hover:scale-[1.02] active:scale-95 transition-all mt-4">
-                                  Crear Cuenta
-                              </button>
-                          </form>
+                               <button type="submit" className="w-full py-5 bg-cuadralo-textLight dark:bg-white text-cuadralo-bgLight dark:text-black rounded-2xl font-black text-lg shadow-xl hover:scale-[1.02] active:scale-95 transition-all mt-4">
+                                   Crear Cuenta
+                               </button>
+                           </form>
                           
                           <div className="relative my-8">
                               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-black/10 dark:border-white/10"></div></div>
@@ -604,12 +665,14 @@ export default function RegisterPage() {
   );
 }
 
-function FloatingInput({ icon, label, type = "text", value, onChange, isLower, availability, checking, invalid }) {
-    const statusColor = invalid || availability === false ? "border-red-500" : "border-transparent";
+function FloatingInput({ icon, label, type = "text", value, onChange, isLower, availability, checking, invalid, readOnly = false }) {
+    const statusColor = invalid || availability === false ? "border-red-500" : readOnly ? "border-blue-500/50" : "border-transparent";
     const statusIcon = checking ? (
         <Loader2 size={16} className="animate-spin text-gray-400" />
     ) : (invalid || availability === false) ? (
         <XCircle size={16} className="text-red-500" />
+    ) : readOnly ? (
+        <div className="w-4 h-4 text-blue-500">🔒</div>
     ) : null;
 
     return (
@@ -620,16 +683,17 @@ function FloatingInput({ icon, label, type = "text", value, onChange, isLower, a
             <div className="relative">
                 <input
                     type={type}
-                    className={`peer w-full bg-black/5 dark:bg-white/5 border-2 ${statusColor} focus:border-cuadralo-pink/50 rounded-2xl pt-7 pb-3 pl-14 ${(checking || invalid || availability !== null) ? 'pr-14' : 'pr-5'} text-base font-bold text-cuadralo-textLight dark:text-white outline-none transition-all ${isLower ? 'lowercase' : ''}`}
+                    className={`peer w-full ${readOnly ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : 'bg-black/5 dark:bg-white/5'} border-2 ${statusColor} focus:border-cuadralo-pink/50 rounded-2xl pt-7 pb-3 pl-14 ${(checking || invalid || availability !== null || readOnly) ? 'pr-14' : 'pr-5'} text-base font-bold text-cuadralo-textLight dark:text-white outline-none transition-all ${isLower ? 'lowercase' : ''} ${readOnly ? '' : 'focus:border-cuadralo-pink/50'}`}
                     placeholder=" "
                     value={value}
-                    onChange={(e) => onChange(e.target.value)}
+                    onChange={(e) => !readOnly && onChange(e.target.value)}
+                    readOnly={readOnly}
                     required
                 />
                 <label className={`absolute left-14 text-gray-500 font-black uppercase tracking-widest transition-all duration-200 pointer-events-none ${value ? 'top-2.5 text-[9px]' : 'top-1/2 -translate-y-1/2 text-xs peer-focus:top-2.5 peer-focus:text-[9px] peer-focus:text-cuadralo-pink'}`}>
-                    {label}
+                    {label} {readOnly && <span className="text-[10px] text-blue-500">(Vinculado a Google)</span>}
                 </label>
-                {availability !== null && (
+                {(availability !== null || readOnly) && (
                     <div className="absolute right-5 top-1/2 -translate-y-1/2 z-10">
                         {statusIcon}
                     </div>

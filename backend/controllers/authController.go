@@ -6,7 +6,9 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/smtp"
 	"os"
 	"strings"
@@ -114,6 +116,7 @@ type RegisterDTO struct {
 	Username    string   `json:"username"`
 	Email       string   `json:"email"`
 	Password    string   `json:"password"`
+	GoogleID    string   `json:"google_id"`
 	BirthDate   string   `json:"birthDate"`
 	Gender      string   `json:"gender"`
 	Photo       string   `json:"photo"`
@@ -166,6 +169,7 @@ func Register(c *fiber.Ctx) error {
 		Name:      data.Name,
 		Username:  username,
 		Email:     data.Email,
+		GoogleID:  data.GoogleID,
 		Password:  string(password),
 		BirthDate: birthTime,
 		Gender:    data.Gender,
@@ -175,6 +179,12 @@ func Register(c *fiber.Ctx) error {
 		Latitude:  data.Latitude,
 		Longitude: data.Longitude,
 		Location:  data.Location,
+	}
+
+	// Si viene de Google, marcar email como verificado y quitar contraseña
+	if data.GoogleID != "" {
+		user.IsVerified = true
+		user.Password = ""
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
@@ -216,10 +226,31 @@ func Login(c *fiber.Ctx) error {
 	var user models.User
 	database.DB.Where("email = ?", email).First(&user)
 	if user.ID == 0 {
+		// Delay para prevenir timing attacks
+		time.Sleep(200 * time.Millisecond)
 		return c.Status(404).JSON(fiber.Map{"error": "Usuario no encontrado"})
 	}
 
+	// CAPA 1: Si el usuario tiene cuenta vinculada a Google, BLOQUEO TOTAL
+	if user.GoogleID != "" {
+		// Delay para prevenir timing attacks
+		time.Sleep(200 * time.Millisecond)
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Esta cuenta está vinculada a Google. Inicia sesión con el botón de Google.",
+			"googleAccount": true,
+		})
+	}
+
+	// CAPA 2: Si el usuario no tiene password hash (cuenta Google antigua), bloquear
+	if user.Password == "" {
+		time.Sleep(200 * time.Millisecond)
+		return c.Status(400).JSON(fiber.Map{"error": "Contraseña no configurada. Contacta soporte."})
+	}
+
+	// CAPA 3: Verificar contraseña de forma segura
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		// Delay para prevenir timing attacks
+		time.Sleep(200 * time.Millisecond)
 		return c.Status(400).JSON(fiber.Map{"error": "Contraseña incorrecta"})
 	}
 
@@ -567,21 +598,69 @@ func ValidateResetToken(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"valid": true, "email": user.Email})
 }
 
+type GoogleUserInfo struct {
+	Sub           string `json:"sub"`
+	Email         string `json:"email"`
+	Name          string `json:"name"`
+	Picture       string `json:"picture"`
+	EmailVerified bool   `json:"email_verified"`
+}
+
 func GoogleLogin(c *fiber.Ctx) error {
 	var data map[string]string
 	if err := c.BodyParser(&data); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Datos inválidos"})
 	}
 
-	email := strings.TrimSpace(data["email"])
-
-	var user models.User
-	database.DB.Where("email = ?", email).First(&user)
-
-	if user.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"error": "Usuario no encontrado. Por favor, regístrate primero."})
+	accessToken := strings.TrimSpace(data["access_token"])
+	if accessToken == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Access token requerido"})
 	}
 
+	// Obtener info del usuario desde Google usando el endpoint correcto
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", "https://www.googleapis.com/oauth2/v2/userinfo", nil)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	resp, err := client.Do(req)
+	if err != nil || resp.StatusCode != 200 {
+		return c.Status(401).JSON(fiber.Map{"error": "Token de Google inválido"})
+	}
+	defer resp.Body.Close()
+
+	var googleUser GoogleUserInfo
+	if err := json.NewDecoder(resp.Body).Decode(&googleUser); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Error procesando respuesta de Google"})
+	}
+
+	if googleUser.Email == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "No se pudo obtener el email de Google"})
+	}
+
+	// Buscar usuario por Google ID o Email
+	var user models.User
+	database.DB.Where("google_id = ?", googleUser.Sub).Or("email = ?", googleUser.Email).First(&user)
+
+	if user.ID == 0 {
+		// Usuario no existe - retornar datos de Google para que frontend redirija al registro
+		return c.Status(404).JSON(fiber.Map{
+			"error":        "Usuario no registrado",
+			"needsRegister": true,
+			"googleData": fiber.Map{
+				"sub":     googleUser.Sub,
+				"email":   googleUser.Email,
+				"name":    googleUser.Name,
+				"picture": googleUser.Picture,
+			},
+		})
+	}
+
+	// Usuario existe - actualizar Google ID si no lo tiene
+	if user.GoogleID == "" {
+		database.DB.Model(&user).Update("google_id", googleUser.Sub)
+	}
+
+	// Verificar suspensión
 	if user.IsSuspended {
 		if user.SuspendedUntil != nil && user.SuspendedUntil.Before(time.Now()) {
 			database.DB.Model(&user).Updates(map[string]interface{}{
@@ -602,6 +681,7 @@ func GoogleLogin(c *fiber.Ctx) error {
 		}
 	}
 
+	// Verificar mantenimiento
 	var maintenance models.Setting
 	database.DB.Where("key = ?", "maintenance_mode").First(&maintenance)
 	if maintenance.Value == "true" {
@@ -611,12 +691,12 @@ func GoogleLogin(c *fiber.Ctx) error {
 		}
 	}
 
+	// Generar JWT
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": float64(user.ID),
 		"exp": time.Now().Add(time.Hour * 24 * 30).Unix(),
 	})
 
-	// Se usa getJWTSecret()
 	t, err := token.SignedString([]byte(getJWTSecret()))
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Error generando token"})

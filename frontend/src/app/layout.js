@@ -11,8 +11,8 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 
 const inter = Inter({ subsets: ["latin"] });
 
-// ⚠️ REEMPLAZA ESTO CON TU CLIENT ID REAL DE GOOGLE CLOUD CONSOLE
-const GOOGLE_CLIENT_ID = "TU_CLIENT_ID_AQUI.apps.googleusercontent.com";
+// Google Client ID desde variable de entorno
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
 export default function RootLayout({ children }) {
   const [theme, setTheme] = useState("dark");

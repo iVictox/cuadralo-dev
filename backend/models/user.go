@@ -36,6 +36,7 @@ type User struct {
 	Name      string    `json:"name"`
 	Username  string    `gorm:"unique" json:"username"`
 	Email     string    `gorm:"unique" json:"email"`
+	GoogleID  string    `gorm:"unique" json:"google_id,omitempty"`
 	Password  string    `json:"-"`
 	BirthDate time.Time `json:"birth_date"`
 	Gender    string    `json:"gender"`

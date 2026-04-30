@@ -40,9 +40,9 @@ export default function LoginPage() {
         console.error("Error login:", err);
         // Check if user is suspended
         if (err.message && err.message.includes("suspendida")) {
-            // The API handler will have already stored suspension data and redirected
-            // But just in case, we show the error
             setError(err.message);
+        } else if (err.googleAccount) {
+            setError("Esta cuenta está vinculada a Google. Inicia sesión con el botón de Google.");
         } else {
             setError("Correo o contraseña incorrectos.");
         }
@@ -52,32 +52,26 @@ export default function LoginPage() {
 
   // --- LÓGICA DE LOGIN CON GOOGLE ---
   const loginWithGoogle = useGoogleLogin({
-    onSuccess: (codeResponse) => {
+    onSuccess: async (codeResponse) => {
         setIsLoading(true);
-        fetch(`https://www.googleapis.com/oauth2/v1/userinfo?access_token=${codeResponse.access_token}`, {
-            headers: { Authorization: `Bearer ${codeResponse.access_token}`, Accept: 'application/json' }
-        })
-        .then((res) => res.json())
-        .then(async (data) => {
-            try {
-                const response = await api.post("/login/google", { 
-                    email: data.email, 
-                    google_id: data.id 
-                });
-                localStorage.setItem("token", response.token);
-                localStorage.setItem("user", JSON.stringify(response.user));
-                router.push("/");
-            } catch (err) {
-                console.error("Error backend Google:", err);
-                setError("Esta cuenta de Google no está registrada en Cuadralo.");
-                setIsLoading(false);
+        try {
+            const response = await api.post("/login/google", {
+                access_token: codeResponse.access_token
+            });
+            localStorage.setItem("token", response.token);
+            localStorage.setItem("user", JSON.stringify(response.user));
+            router.push("/");
+        } catch (err) {
+            console.error("Error backend Google:", err);
+            // Si el usuario no está registrado, redirigir al registro con los datos de Google
+            if (err.needsRegister && err.googleData) {
+                localStorage.setItem("googleData", JSON.stringify(err.googleData));
+                router.push("/register?from=google");
+                return;
             }
-        })
-        .catch((err) => {
-            console.error("Error fetch Google:", err);
-            setError("Error al obtener los datos de Google");
+            setError(err.error || "Error al iniciar sesión con Google");
             setIsLoading(false);
-        });
+        }
     },
     onError: (error) => {
         console.error('Login Failed:', error);
