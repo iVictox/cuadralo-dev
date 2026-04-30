@@ -48,7 +48,7 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
 
-  const [bcvRate, setBcvRate] = useState(null);
+  const [exchangeRate, setExchangeRate] = useState(null);
   const [amountVES, setAmountVES] = useState(null);
   
   const [formData, setFormData] = useState({ reference: "", bank: "", phone: "" });
@@ -71,7 +71,7 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
           try {
               const res = await api.get("/premium/rate");
               if (res.rate && res.price) {
-                  setBcvRate(res.rate);
+                  setExchangeRate(res.rate);
                   setAmountVES((product.price * res.rate).toFixed(2));
               } else {
                   throw new Error("Configuración incompleta");
@@ -79,7 +79,7 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
           } catch (error) {
               console.error("Fallo obteniendo la configuración:", error);
               const fallbackRate = 45.00;
-              setBcvRate(fallbackRate); 
+              setExchangeRate(fallbackRate); 
               setAmountVES((product.price * fallbackRate).toFixed(2));
           }
       };
@@ -110,7 +110,7 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
               item_name: product.name,
               amount_usd: product.price,
               amount_ves: parseFloat(amountVES),
-              rate: bcvRate,
+              rate: exchangeRate,
               reference: formData.reference,
               bank: formData.bank,
               phone: formData.phone,
@@ -227,11 +227,11 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
                                 </div>
                                 <div className="flex justify-between items-center pb-4 sm:pb-6 border-b border-zinc-200 border-dashed">
                                     <span className="text-zinc-500 text-xs sm:text-sm font-semibold flex items-center gap-2">
-                                        Tasa de cambio BCV
-                                        {!bcvRate && <RefreshCw size={12} className="animate-spin text-zinc-400" />}
+                                        Tasa de cambio
+                                        {!exchangeRate && <RefreshCw size={12} className="animate-spin text-zinc-400" />}
                                     </span>
                                     <span className="text-xs sm:text-sm font-black text-zinc-700">
-                                        x {bcvRate ? bcvRate.toLocaleString('es-VE', { minimumFractionDigits: 2 }) : "..."} Bs.
+                                         x {exchangeRate ? exchangeRate.toLocaleString('es-VE', { minimumFractionDigits: 2 }) : "..."} Bs.
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-end pt-6">

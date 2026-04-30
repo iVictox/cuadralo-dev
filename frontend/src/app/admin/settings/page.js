@@ -42,13 +42,13 @@ export default function AdminSettings() {
   const fetchExternalRate = async () => {
     setFetchingRate(true);
     try {
-        const data = await api.post("/admin/settings/sync-bcv");
+        const data = await api.post("/admin/settings/sync-exchange-rate");
         if (data && data.rate) {
             setSettings(prev => ({ ...prev, bs_exchange_rate: data.rate }));
         }
     } catch (err) {
         console.error("Error syncing BCV rate:", err);
-        alert("Error sincronizando la tasa BCV");
+         alert("Error sincronizando la tasa de cambio");
     } finally {
         setFetchingRate(false);
     }
@@ -130,9 +130,9 @@ export default function AdminSettings() {
 
                     <div className="bg-card-hover p-3 rounded-lg">
                         <div className="flex justify-between items-center mb-2">
-                            <label className="text-xs font-medium text-muted flex items-center gap-2">
-                            <DollarSign size={14} className="text-success"/> Tasa BCV
-                            </label>
+                             <label className="text-xs font-medium text-muted flex items-center gap-2">
+                             <DollarSign size={14} className="text-success"/> Tasa de cambio
+                             </label>
                             <button type="button" onClick={fetchExternalRate} disabled={fetchingRate} className="text-xs bg-card hover:bg-accent-primary/10 text-accent-primary px-2 py-1 rounded flex items-center gap-1">
                                 <RefreshCw size={12} className={fetchingRate ? "animate-spin" : ""} /> Sincronizar
                             </button>

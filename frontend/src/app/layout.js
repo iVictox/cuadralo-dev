@@ -1,87 +1,71 @@
-"use client";
-
 import "./globals.css";
 import { Inter } from "next/font/google";
-import { ToastProvider } from "@/context/ToastContext";
-import { SocketProvider } from "@/context/SocketContext";
-import { ConfirmProvider } from "@/context/ConfirmContext";
-import { ThemeProvider } from "@/context/ThemeContext";
-import { useEffect, useState } from "react";
-import { GoogleOAuthProvider } from '@react-oauth/google';
+import ClientLayout from "./ClientLayout";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// Google Client ID desde variable de entorno
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+export const metadata = {
+  title: {
+    default: 'Cuadralo Club - La app de citas de Venezuela',
+    template: '%s | Cuadralo Club'
+  },
+  description: 'La forma más divertida de conocer gente nueva en Venezuela. Swipe, conecta y encuentra a alguien especial con Cuadralo Club.',
+  keywords: ['citas', 'Venezuela', 'dating app', 'conocer gente', 'encontrar pareja', 'app de citas', 'Venezuela dating'],
+  authors: [{ name: 'Cuadralo Club' }],
+  creator: 'Cuadralo Club',
+  publisher: 'Cuadralo Club',
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  openGraph: {
+    title: 'Cuadralo Club - La app de citas de Venezuela',
+    description: 'Conecta con personas reales en Venezuela. La app de citas diseñada para ti.',
+    url: 'https://cuadralo.com',
+    siteName: 'Cuadralo Club',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Cuadralo Club - App de Citas',
+      },
+    ],
+    locale: 'es_VE',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Cuadralo Club - La app de citas de Venezuela',
+    description: 'Conecta con personas reales en Venezuela.',
+    images: ['/og-image.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/apple-icon.png',
+  },
+  manifest: '/site.webmanifest',
+  metadataBase: new URL('https://cuadralo.com'),
+};
 
 export default function RootLayout({ children }) {
-  const [theme, setTheme] = useState("dark");
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "light") setTheme("light");
-
-    // =================================================================
-    // 🛡️ SOLUCIÓN DEFINITIVA ANTI-ZOOM PARA IOS/SAFARI Y ANDROID
-    // =================================================================
-    
-    // 1. Bloquea el "pellizco" (pinch-to-zoom) con dos dedos
-    const handleTouchMove = (e) => {
-      if (e.touches.length > 1) {
-        e.preventDefault(); 
-      }
-    };
-
-    // 2. Bloquea el "doble toque" rápido (double-tap to zoom)
-    let lastTouchEnd = 0;
-    const handleTouchEnd = (e) => {
-      const now = (new Date()).getTime();
-      if (now - lastTouchEnd <= 300) {
-        e.preventDefault();
-      }
-      lastTouchEnd = now;
-    };
-
-    // 3. Bloquea los gestos de trackpad/pantalla exclusivos de Apple
-    const handleGesture = (e) => {
-        e.preventDefault();
-    };
-
-    // Aplicamos los bloqueadores (usamos passive: false para que nos deje cancelar el evento)
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd, { passive: false });
-    document.addEventListener('gesturestart', handleGesture, { passive: false });
-    document.addEventListener('gesturechange', handleGesture, { passive: false });
-
-    // Limpiamos los eventos al desmontar
-    return () => {
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-      document.removeEventListener('gesturestart', handleGesture);
-      document.removeEventListener('gesturechange', handleGesture);
-    };
-  }, []);
-
   return (
-    <html lang="es" className={theme} suppressHydrationWarning>
-      <head>
-        <meta name="theme-color" content={theme === "dark" ? "#0f0518" : "#ffffff"} />
-        {/* viewport-fit=cover ayuda a las pantallas con "notch" (isla) en iPhone */}
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
-      </head>
-      {/* ✅ Agregadas las clases 'touch-pan-x touch-pan-y overscroll-none' para forzar comportamiento nativo desde CSS */}
-      <body className={`${inter.className} min-h-[100dvh] overflow-x-hidden antialiased bg-cuadralo-bgLight dark:bg-[#0f0518] text-cuadralo-textLight dark:text-cuadralo-textDark selection:bg-cuadralo-pink selection:text-white transition-colors duration-500 touch-pan-x touch-pan-y overscroll-none`}>
-        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-            <ThemeProvider>
-                <ToastProvider>
-                    <ConfirmProvider>
-                        <SocketProvider>
-                            {children}
-                        </SocketProvider>
-                    </ConfirmProvider>
-                </ToastProvider>
-            </ThemeProvider>
-        </GoogleOAuthProvider>
+    <html lang="es">
+      <body className={inter.className}>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

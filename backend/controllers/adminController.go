@@ -802,33 +802,40 @@ func UpdateSystemSettings(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Configuraciones guardadas y activadas con éxito."})
 }
 
-// SyncBCVRate fetches the current BCV rate from external API and updates the database
-func SyncBCVRate() error {
-	// Fetch rate from external API
-	resp, err := http.Get("https://ve.dolarapi.com/v1/dolares/oficial")
+// SyncExchangeRate fetches the current parallel USD rate (used by banks for digital dollars) from DolarFlow API and updates the database
+func SyncExchangeRate() error {
+	// Fetch rate from DolarFlow API (parallel rate - used by banks for digital dollars)
+	resp, err := http.Get("https://dolarflow.com/api/paralelo")
 	if err != nil {
-		log.Printf("❌ Error fetching BCV rate: %v", err)
+		log.Printf("❌ Error fetching exchange rate: %v", err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("❌ Error reading BCV API response: %v", err)
+		log.Printf("❌ Error reading exchange rate API response: %v", err)
 		return err
 	}
 
 	var data map[string]interface{}
 	if err := json.Unmarshal(body, &data); err != nil {
-		log.Printf("❌ Error parsing BCV API response: %v", err)
+		log.Printf("❌ Error parsing exchange rate API response: %v", err)
 		return err
 	}
 
-	// Get the promedio (average) rate
-	promedio, ok := data["promedio"].(float64)
+	// Check if the response was successful
+	exito, ok := data["exito"].(bool)
+	if !ok || !exito {
+		log.Printf("❌ Exchange rate API returned unsuccessful response")
+		return fmt.Errorf("unsuccessful API response")
+	}
+
+	// Get the price from the "precio" field
+	precio, ok := data["precio"].(float64)
 	if !ok {
-		log.Printf("❌ Invalid BCV rate format in API response")
-		return fmt.Errorf("invalid BCV rate format")
+		log.Printf("❌ Invalid exchange rate format in API response")
+		return fmt.Errorf("invalid exchange rate format")
 	}
 
 	// Update or create the setting in database
@@ -837,26 +844,26 @@ func SyncBCVRate() error {
 		// Setting doesn't exist, create it
 		setting = models.Setting{
 			Key:   "bs_exchange_rate",
-			Value: fmt.Sprintf("%.2f", promedio),
+			Value: fmt.Sprintf("%.2f", precio),
 		}
 		database.DB.Create(&setting)
-		log.Printf("✅ BCV rate created: %.2f Bs/USD", promedio)
+		log.Printf("✅ Exchange rate created: %.2f Bs/USD", precio)
 	} else {
 		// Update existing setting
 		oldValue := setting.Value
-		setting.Value = fmt.Sprintf("%.2f", promedio)
+		setting.Value = fmt.Sprintf("%.2f", precio)
 		database.DB.Save(&setting)
-		log.Printf("✅ BCV rate updated: %s -> %.2f Bs/USD", oldValue, promedio)
+		log.Printf("✅ Exchange rate updated: %s -> %.2f Bs/USD", oldValue, precio)
 	}
 
 	return nil
 }
 
-// SyncBCVRateHandler is an HTTP handler for manual BCV rate sync (admin only)
-func SyncBCVRateHandler(c *fiber.Ctx) error {
-	if err := SyncBCVRate(); err != nil {
+// SyncExchangeRateHandler is an HTTP handler for manual exchange rate sync (admin only)
+func SyncExchangeRateHandler(c *fiber.Ctx) error {
+	if err := SyncExchangeRate(); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Error sincronizando tasa BCV",
+			"error": "Error sincronizando tasa de cambio",
 		})
 	}
 	
@@ -865,10 +872,10 @@ func SyncBCVRateHandler(c *fiber.Ctx) error {
 	database.DB.First(&setting, "key = ?", "bs_exchange_rate")
 	
 	adminID := uint(c.Locals("userId").(float64))
-	LogAdminAction(adminID, "sync_bcv_rate", nil, "Tasa BCV sincronizada manualmente")
+	LogAdminAction(adminID, "sync_exchange_rate", nil, "Tasa de cambio sincronizada manualmente")
 	
 	return c.JSON(fiber.Map{
-		"message": "Tasa BCV sincronizada exitosamente",
+		"message": "Tasa de cambio sincronizada exitosamente",
 		"rate":    setting.Value,
 	})
 }

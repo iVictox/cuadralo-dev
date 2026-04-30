@@ -140,18 +140,18 @@ func main() {
 		}
 	}()
 
-	// 7. Cron Job: Sincronizar tasa BCV automáticamente (cada hora)
+	// 7. Cron Job: Sincronizar tasa de cambio automáticamente (cada hora)
 	go func() {
 		// Ejecutar una vez al iniciar
-		if err := controllers.SyncBCVRate(); err != nil {
-			log.Printf("❌ Error en sincronización inicial BCV: %v", err)
+		if err := controllers.SyncExchangeRate(); err != nil {
+			log.Printf("❌ Error en sincronización inicial de tasa de cambio: %v", err)
 		}
 		
 		// Luego cada hora
 		for {
 			time.Sleep(1 * time.Hour)
-			if err := controllers.SyncBCVRate(); err != nil {
-				log.Printf("❌ Error sincronizando tasa BCV: %v", err)
+			if err := controllers.SyncExchangeRate(); err != nil {
+				log.Printf("❌ Error sincronizando tasa de cambio: %v", err)
 			}
 		}
 	}()
