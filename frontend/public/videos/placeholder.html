@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { margin: 0; background: #0B0410; overflow: hidden; }
+        .container { width: 100vw; height: 100vh; position: relative; }
+        .circle { position: absolute; border-radius: 50%; opacity: 0.3; animation: float 8s infinite ease-in-out; }
+        .c1 { width: 200px; height: 200px; background: #F2138E; top: 10%; left: 10%; animation-delay: 0s; }
+        .c2 { width: 300px; height: 300px; background: #551CA6; top: 50%; right: 10%; animation-delay: 2s; }
+        .c3 { width: 150px; height: 150px; background: #FF4DA6; bottom: 10%; left: 30%; animation-delay: 4s; }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-30px) scale(1.1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="circle c1"></div>
+        <div class="circle c2"></div>
+        <div class="circle c3"></div>
+    </div>
+</body>
+</html>

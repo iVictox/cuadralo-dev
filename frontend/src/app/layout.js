@@ -6,11 +6,11 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
   title: {
-    default: 'Cuadralo Club - La app de citas de Venezuela',
-    template: '%s | Cuadralo Club'
+    default: 'Cuadralo - Conecta y vive experiencias',
+    template: '%s | Cuadralo'
   },
-  description: 'La forma más divertida de conocer gente nueva en Venezuela. Swipe, conecta y encuentra a alguien especial con Cuadralo Club.',
-  keywords: ['citas', 'Venezuela', 'dating app', 'conocer gente', 'encontrar pareja', 'app de citas', 'Venezuela dating'],
+  description: 'La app social para jóvenes en Venezuela. Conecta, haz amigos y vive experiencias épicas con personas increíbles.',
+  keywords: ['social', 'Venezuela', 'app social', 'conocer gente', 'jóvenes', 'amigos', 'experiencias', 'Venezuela social'],
   authors: [{ name: 'Cuadralo Club' }],
   creator: 'Cuadralo Club',
   publisher: 'Cuadralo Club',

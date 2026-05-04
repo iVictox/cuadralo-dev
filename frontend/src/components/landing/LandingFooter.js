@@ -18,7 +18,7 @@ export default function LandingFooter() {
             />
           </Link>
             <p className="text-sm text-white/60 mb-4">
-              La app de citas diseñada para Venezuela. Conecta con personas reales y encuentra a alguien especial.
+              La app social diseñada para jóvenes en Venezuela. Conecta, haz amigos y vive experiencias únicas.
             </p>
             <div className="flex gap-3">
               <a
@@ -55,52 +55,37 @@ export default function LandingFooter() {
             </h3>
             <ul className="space-y-3">
               <li>
-                <a href="#features" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-                  Características
-                </a>
+                <Link href="/faq" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
+                  FAQ
+                </Link>
               </li>
               <li>
-                <a href="#how-it-works" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-                  Cómo funciona
-                </a>
-              </li>
-              <li>
-                <a href="#testimonials" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-                  Testimonios
-                </a>
-              </li>
-              <li>
-                <a href="#safety" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-                  Seguridad
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Company */}
-          <div>
-            <h3 className="text-sm font-bold text-white mb-4">
-              Compañía
-            </h3>
-            <ul className="space-y-3">
-              <li>
-                <Link href="/about" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
+                <Link href="/sobre-nosotros" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
                   Sobre nosotros
                 </Link>
               </li>
               <li>
-                <Link href="/blog" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-                  Blog
+                <Link href="/contacto" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
+                  Contacto
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h3 className="text-sm font-bold text-white mb-4">
+              Legal
+            </h3>
+            <ul className="space-y-3">
+              <li>
+                <Link href="/terminos" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
+                  Términos y Condiciones
                 </Link>
               </li>
               <li>
-                <Link href="/press" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-                  Prensa
-                </Link>
-              </li>
-              <li>
-                <Link href="/careers" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-                  Trabaja con nosotros
+                <Link href="/politica" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
+                  Política de Privacidad
                 </Link>
               </li>
             </ul>
@@ -113,23 +98,13 @@ export default function LandingFooter() {
             </h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/help" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-                  Centro de ayuda
+                <Link href="/faq" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
+                  Preguntas Frecuentes
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-                  Contacto
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-                  Términos y Condiciones
-                </Link>
-              </li>
-              <li>
-                <Link href="/privacy" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-                  Política de Privacidad
+                <Link href="/contacto" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
+                  Contáctanos
                 </Link>
               </li>
             </ul>

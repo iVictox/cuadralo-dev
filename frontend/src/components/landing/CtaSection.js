@@ -52,13 +52,13 @@ export default function CtaSection() {
             </motion.div>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-6">
-            ¿Listo para encontrar a
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cuadralo-pink to-cuadralo-purple"> alguien especial</span>?
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-6">
+            ¿Listo para vivir
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cuadralo-pink to-cuadralo-purple"> experiencias únicas</span>?
           </h2>
 
-          <p className="text-lg text-white/60 mb-8 max-w-2xl mx-auto">
-            Únete a miles de personas en Venezuela que ya están conectando en Cuadralo Club. Es rápido y seguro.
+            <p className="text-lg text-white/60 mb-8 max-w-2xl mx-auto">
+            Únete a miles de jóvenes en Venezuela que ya están conectando y viviendo experiencias épicas. Es rápido y seguro.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

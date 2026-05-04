@@ -57,7 +57,6 @@ body {
 }
 
 
-
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -100,4 +99,14 @@ body {
   .text-success { color: var(--success); }
   .text-warning { color: var(--warning); }
   .text-error { color: var(--error); }
+  
+  /* Video fade-in animation */
+  .fade-in-video {
+    animation: fadeIn 1s ease-in forwards;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 0.2; }
+  }
 }

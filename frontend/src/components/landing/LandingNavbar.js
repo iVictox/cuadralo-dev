@@ -28,18 +28,15 @@ export default function LandingNavbar() {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-              Características
-            </a>
-            <a href="#how-it-works" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-              Cómo funciona
-            </a>
-            <a href="#testimonials" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-              Testimonios
-            </a>
-            <a href="#safety" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
-              Seguridad
-            </a>
+            <Link href="/sobre-nosotros" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
+              Sobre nosotros
+            </Link>
+            <Link href="/faq" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
+              FAQ
+            </Link>
+            <Link href="/contacto" className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors">
+              Contacto
+            </Link>
           </div>
 
           {/* Auth Buttons */}
@@ -84,38 +81,31 @@ export default function LandingNavbar() {
           </div>
         </div>
 
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-white/10">
-            <div className="flex flex-col gap-4">
-              <a
-                href="#features"
-                className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Características
-              </a>
-              <a
-                href="#how-it-works"
-                className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Cómo funciona
-              </a>
-              <a
-                href="#testimonials"
-                className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Testimonios
-              </a>
-              <a
-                href="#safety"
-                className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Seguridad
-              </a>
+          {/* Mobile Menu */}
+          {isMenuOpen && (
+            <div className="md:hidden py-4 border-t border-white/10">
+              <div className="flex flex-col gap-4">
+                <Link
+                  href="/sobre-nosotros"
+                  className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Sobre nosotros
+                </Link>
+                <Link
+                  href="/faq"
+                  className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  FAQ
+                </Link>
+                <Link
+                  href="/contacto"
+                  className="text-sm text-white/60 hover:text-cuadralo-pink transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Contacto
+                </Link>
               <div className="flex gap-4 pt-4 border-t border-white/10">
                 {isLoggedIn ? (
                   <Link
