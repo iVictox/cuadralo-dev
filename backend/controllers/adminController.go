@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"cuadralo-backend/database"
+	"cuadralo-backend/middleware"
 	"cuadralo-backend/models"
 	"cuadralo-backend/websockets"
 	"encoding/json"
@@ -334,6 +335,8 @@ func SuspendUser(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al aplicar suspensión"})
 	}
 
+	middleware.InvalidateUserCache(targetUser.ID)
+
 	LogAdminAction(adminID, action, &targetUser.ID, details)
 	return c.JSON(fiber.Map{"message": "Estado de cuenta actualizado correctamente."})
 }
@@ -560,6 +563,7 @@ func ProcessAdminRequest(c *fiber.Ctx) error {
 		req.Status = "approved"
 		req.ApprovedByID = &superAdminID
 		database.DB.Model(&models.User{}).Where("id = ?", req.UserID).Update("role", req.RequestedRole)
+		middleware.InvalidateUserCache(req.UserID)
 		LogAdminAction(superAdminID, "grant_admin_role", &req.UserID, "Rol otorgado: "+req.RequestedRole)
 	} else {
 		req.Status = "denied"
@@ -598,6 +602,7 @@ func RevokeAdminRole(c *fiber.Ctx) error {
 	}
 
 	database.DB.Model(&targetUser).Update("role", "user")
+	middleware.InvalidateUserCache(targetUser.ID)
 	LogAdminAction(superAdminID, "revoke_admin_role", &targetUser.ID, "Rol administrativo revocado")
 
 	return c.JSON(fiber.Map{"message": "Privilegios revocados exitosamente"})

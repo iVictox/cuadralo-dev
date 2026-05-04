@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, MessageCircle, Zap, Crown, Sparkles, Heart } from "lucide-react";
 import { api } from "@/utils/api";
 import FlashModal from "@/components/FlashModal";
-import PrimeModal from "@/components/PrimeModal";
+import VipModal from "@/components/VipModal";
 import SquareLoader from "./SquareLoader";
 
 export default function ChatList({ onChatSelect, onLoaded }) {
@@ -16,7 +16,7 @@ export default function ChatList({ onChatSelect, onLoaded }) {
   const [searchQuery, setSearchQuery] = useState("");
   
   const [showFlash, setShowFlash] = useState(false);
-  const [showPrime, setShowPrime] = useState(false);
+  const [showVip, setShowVip] = useState(false);
   const [flashInfo, setFlashInfo] = useState(null);
 
   const fetchFlashInfo = async () => {
@@ -123,7 +123,7 @@ export default function ChatList({ onChatSelect, onLoaded }) {
             </motion.button>
           )}
         </div>
-        <button onClick={() => setShowPrime(true)} className="p-2 bg-yellow-500/10 rounded-full hover:bg-yellow-500/20 transition-colors border border-yellow-500/20">
+        <button onClick={() => setShowVip(true)} className="p-2 bg-yellow-500/10 rounded-full hover:bg-yellow-500/20 transition-colors border border-yellow-500/20">
             <Crown size={20} className="text-yellow-500" />
         </button>
       </div>
@@ -281,7 +281,7 @@ export default function ChatList({ onChatSelect, onLoaded }) {
 
       <AnimatePresence>
          {showFlash && <FlashModal onClose={() => setShowFlash(false)} />}
-         {showPrime && <PrimeModal onClose={() => setShowPrime(false)} />}
+         {showVip && <VipModal onClose={() => setShowVip(false)} />}
       </AnimatePresence>
     </div>
   );

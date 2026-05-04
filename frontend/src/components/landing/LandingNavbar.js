@@ -3,10 +3,15 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function LandingNavbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem("token"));
+  }, []);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B0410]/80 backdrop-blur-md border-b border-white/10">
@@ -39,18 +44,29 @@ export default function LandingNavbar() {
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center gap-4">
-            <Link
-              href="/login"
-              className="text-sm font-medium text-white/80 hover:text-white transition-colors"
-            >
-              Iniciar Sesión
-            </Link>
-            <Link
-              href="/register"
-              className="bg-cuadralo-pink text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-cuadralo-pinkDark transition-colors"
-            >
-              Registrarse
-            </Link>
+            {isLoggedIn ? (
+              <Link
+                href="/app"
+                className="bg-cuadralo-pink text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-cuadralo-pinkDark transition-colors"
+              >
+                Acceder a la app
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-white/80 hover:text-white transition-colors"
+                >
+                  Iniciar Sesión
+                </Link>
+                <Link
+                  href="/register"
+                  className="bg-cuadralo-pink text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-cuadralo-pinkDark transition-colors"
+                >
+                  Registrarse
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -101,20 +117,32 @@ export default function LandingNavbar() {
                 Seguridad
               </a>
               <div className="flex gap-4 pt-4 border-t border-white/10">
-                <Link
-                  href="/login"
-                  className="flex-1 text-center text-sm font-medium text-white/80 hover:text-white transition-colors py-2"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Iniciar Sesión
-                </Link>
-                <Link
-                  href="/register"
-                  className="flex-1 text-center bg-cuadralo-pink text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-cuadralo-pinkDark transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Registrarse
-                </Link>
+                {isLoggedIn ? (
+                  <Link
+                    href="/app"
+                    className="flex-1 text-center bg-cuadralo-pink text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-cuadralo-pinkDark transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Acceder a la app
+                  </Link>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      className="flex-1 text-center text-sm font-medium text-white/80 hover:text-white transition-colors py-2"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Iniciar Sesión
+                    </Link>
+                    <Link
+                      href="/register"
+                      className="flex-1 text-center bg-cuadralo-pink text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-cuadralo-pinkDark transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Registrarse
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -331,8 +331,10 @@ export default function RegisterPage() {
                       payload.google_id = googleData.sub;
                   }
 
-                  await api.post("/register", payload);
-                  setTimeout(() => router.push("/login"), 1000);
+const registerResponse = await api.post("/register", payload);
+                   localStorage.setItem("token", registerResponse.token);
+                   localStorage.setItem("user", JSON.stringify(registerResponse.user));
+                   router.push("/app");
               } catch (err) {
                   // ✅ FIX APLICADO: Ahora prioriza err.error que viene del backend local
                   setError(err.error || err.message || "Hubo un problema al conectar con el servidor.");

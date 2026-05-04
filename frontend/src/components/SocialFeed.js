@@ -10,7 +10,7 @@ import SearchModal from "./SearchModal";
 import NotificationModal from "./NotificationModal"; 
 import { api } from "@/utils/api";
 import { AnimatePresence, motion } from "framer-motion";
-import PrimeModal from "@/components/PrimeModal";
+import VipModal from "@/components/VipModal";
 import SquareLoader from "./SquareLoader";
 
 export default function SocialFeed({ onUploadClick, isActive = true, onLoaded, onPostsUpdate, externalPostId }) {
@@ -28,7 +28,7 @@ export default function SocialFeed({ onUploadClick, isActive = true, onLoaded, o
   const [scrollRef, setScrollRef] = useState(null);
   
   const [viewingUserStories, setViewingUserStories] = useState(null);
-  const [showPrime, setShowPrime] = useState(false);
+  const [showVip, setShowVip] = useState(false);
   const [isPrime, setIsPrime] = useState(false);
   
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -334,7 +334,7 @@ export default function SocialFeed({ onUploadClick, isActive = true, onLoaded, o
 
       {!isPrime && !loading && (
           <div className="flex justify-center mb-8 px-4">
-              <motion.button initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} onClick={() => setShowPrime(true)} className="group w-full max-w-md flex items-center justify-center gap-3 px-6 py-3 rounded-2xl bg-white/40 dark:bg-black/40 border border-yellow-500/30 hover:border-yellow-400 shadow-glass-light dark:shadow-glass-dark backdrop-blur-lg transition-all">
+              <motion.button initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} onClick={() => setShowVip(true)} className="group w-full max-w-md flex items-center justify-center gap-3 px-6 py-3 rounded-2xl bg-white/40 dark:bg-black/40 border border-yellow-500/30 hover:border-yellow-400 shadow-glass-light dark:shadow-glass-dark backdrop-blur-lg transition-all">
                   <Crown size={18} className="text-yellow-500 group-hover:scale-110 transition-transform" fill="currentColor" />
                   <span className="text-sm font-medium text-gray-700 dark:text-yellow-100/90">Sube tus fotos en <b className="text-yellow-600 dark:text-yellow-400">Ultra HD</b></span>
                   <Sparkles size={16} className="text-yellow-400 opacity-50 group-hover:opacity-100 animate-pulse" />
@@ -421,7 +421,7 @@ export default function SocialFeed({ onUploadClick, isActive = true, onLoaded, o
                   }} 
               />
           )}
-          {showPrime && <PrimeModal onClose={() => setShowPrime(false)} />}
+          {showVip && <VipModal onClose={() => setShowVip(false)} />}
       </AnimatePresence>
     </div>
   );

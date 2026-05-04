@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, Edit3, MapPin, Crown, LogOut, FileText, UserCircle, Grid } from "lucide-react";
+import { Settings, Edit3, MapPin, Crown, LogOut, FileText, UserCircle, Grid, ShieldCheck, Check } from "lucide-react";
 import { api } from "@/utils/api";
 import { motion, AnimatePresence } from "framer-motion";
 import EditProfileModal from "./EditProfileModal";
@@ -85,7 +85,7 @@ export default function Profile({ onLoaded }) {
   const isPrime = user?.is_prime;
 
   return (
-    <div className="w-full h-full overflow-y-auto no-scrollbar bg-cuadralo-bgLight dark:bg-[#0f0518] text-cuadralo-textLight dark:text-white relative">
+    <div className="w-full h-full overflow-y-auto no-scrollbar bg-cuadralo-bgLight dark:bg-[#0B0410] text-cuadralo-textLight dark:text-white relative">
       
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-0 md:gap-10 lg:gap-16 md:p-8 lg:p-12 pb-28">
         
@@ -96,6 +96,12 @@ export default function Profile({ onLoaded }) {
             {isPrime && (
               <div className="absolute top-6 right-5 z-30 bg-gradient-to-r from-yellow-400 to-yellow-600 p-2.5 rounded-xl shadow-lg border border-yellow-300">
                 <Crown size={20} className="text-white fill-white animate-pulse" />
+              </div>
+            )}
+
+            {user?.is_verified && (
+              <div className={`absolute ${isPrime ? 'top-16 right-5' : 'top-6 right-5'} z-30 bg-blue-500 p-2.5 rounded-xl shadow-lg`}>
+                <Check size={20} className="text-white" strokeWidth={3} />
               </div>
             )}
 
@@ -128,6 +134,7 @@ export default function Profile({ onLoaded }) {
             <div className="absolute bottom-0 w-full p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent text-white pointer-events-none md:hidden">
               <h1 className="text-4xl font-black uppercase tracking-tighter flex items-end gap-2 drop-shadow-md">
                 {user?.name}
+                {user?.is_verified && <ShieldCheck size={28} className={user?.verification_badge === 'gold' ? 'text-yellow-500' : 'text-blue-500'} />}
                 <span className="text-3xl font-light text-cuadralo-pink">
                   {user?.birth_date ? new Date().getFullYear() - new Date(user?.birth_date).getFullYear() : ""}
                 </span>
@@ -151,6 +158,7 @@ export default function Profile({ onLoaded }) {
           <div className="hidden md:block">
             <h1 className="text-5xl lg:text-7xl font-black uppercase tracking-tighter flex items-end gap-3 drop-shadow-md">
               {user?.name}
+              {user?.is_verified && <ShieldCheck size={40} className={user?.verification_badge === 'gold' ? 'text-yellow-500' : 'text-blue-500'} />}
               <span className="text-4xl lg:text-5xl font-light text-cuadralo-pink mb-1">
                 {user?.birth_date ? new Date().getFullYear() - new Date(user?.birth_date).getFullYear() : ""}
               </span>

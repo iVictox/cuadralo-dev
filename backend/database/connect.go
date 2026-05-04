@@ -62,8 +62,14 @@ db.AutoMigrate(
 
 	DB = db
 
+	db.Exec("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_user_interests_user_id ON user_interests(user_id)")
+	db.Exec("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_user_interests_interest_id ON user_interests(interest_id)")
+	db.Exec("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_role_suspended ON users(role, is_suspended)")
+	db.Exec("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_follows_following ON follows(following_id)")
+	db.Exec("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_follows_follower ON follows(follower_id)")
+
 	SeedInterests()
-	EnsureSuperAdminExists() // NUEVO: Garantiza acceso de seguridad
+	EnsureSuperAdminExists()
 }
 
 func EnsureSuperAdminExists() {

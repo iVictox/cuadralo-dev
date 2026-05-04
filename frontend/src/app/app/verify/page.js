@@ -6,8 +6,8 @@ import { api } from "@/utils/api";
 import { useToast } from "@/context/ToastContext";
 import { Camera, CheckCircle, XCircle, ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import Script from "next/script";
-import Image from "next/image";
+
+const FACEAPI_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js";
 
 export default function VerifyPage() {
   const router = useRouter();
@@ -16,17 +16,49 @@ export default function VerifyPage() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
-  const [status, setStatus] = useState("loading_models"); // loading_models, ready, scanning, comparing, success, error
+  const [status, setStatus] = useState("loading_models");
   const [errorMessage, setErrorMessage] = useState("");
   const [userProfileUrl, setUserProfileUrl] = useState(null);
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
 
   useEffect(() => {
-    // 1. Obtener datos del usuario
+    if (document.getElementById("faceapi-script")) {
+      if (window.faceapi) {
+        setIsScriptLoaded(true);
+        return;
+      }
+    }
+    const script = document.createElement("script");
+    script.id = "faceapi-script";
+    script.src = FACEAPI_URL;
+    script.async = true;
+    script.onload = () => setIsScriptLoaded(true);
+    script.onerror = () => {
+      setStatus("error");
+      setErrorMessage("No se pudo cargar el motor de reconocimiento facial. Revisa tu conexión e intenta de nuevo.");
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!isScriptLoaded) {
+        setStatus("error");
+        setErrorMessage("El motor de IA tardó demasiado en cargar. Recarga la página e intenta de nuevo.");
+      }
+    }, 15000);
+    return () => clearTimeout(timeout);
+  }, [isScriptLoaded]);
+
+  useEffect(() => {
     api.get("/me").then(res => {
       if (res.is_verified) {
         showToast("Tu cuenta ya está verificada", "success");
-        router.push("/u/" + res.username);
+        router.push("/app?tab=profile");
         return;
       }
       
@@ -37,10 +69,10 @@ export default function VerifyPage() {
         return;
       }
       
-      const absoluteUrl = photoUrl.startsWith("http") 
-        ? photoUrl 
-        : `http://localhost:8080/uploads/${photoUrl}`; // Ajusta base URL según tu env
-        
+      const absoluteUrl = photoUrl.startsWith("http")
+        ? `/api/image-proxy?url=${encodeURIComponent(photoUrl)}`
+        : `/api/image-proxy?url=${encodeURIComponent(`http://localhost:8080/uploads/${photoUrl}`)}`;
+
       setUserProfileUrl(absoluteUrl);
     }).catch(err => {
       showToast("Error cargando usuario", "error");
@@ -51,13 +83,17 @@ export default function VerifyPage() {
     };
   }, []);
 
+  const modelsLoadedRef = useRef(false);
+
   useEffect(() => {
-    if (isScriptLoaded && userProfileUrl) {
+    if (isScriptLoaded && userProfileUrl && !modelsLoadedRef.current) {
       loadModels();
     }
   }, [isScriptLoaded, userProfileUrl]);
 
   const loadModels = async () => {
+    if (modelsLoadedRef.current) return;
+    modelsLoadedRef.current = true;
     try {
       const faceapi = window.faceapi;
       if (!faceapi) {
@@ -119,8 +155,15 @@ export default function VerifyPage() {
 
       setStatus("comparing");
 
-      // 2. Cargar imagen de perfil y detectar rostro
-      const profileImage = await faceapi.fetchImage(userProfileUrl);
+      // 2. Cargar imagen de perfil usando Image en vez de fetch (evita CORS)
+      const profileImage = await new Promise((resolve, reject) => {
+        const img = new window.Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("No se pudo cargar la imagen de perfil"));
+        img.src = userProfileUrl;
+      });
+
       const profileDetection = await faceapi.detectSingleFace(profileImage, new faceapi.TinyFaceDetectorOptions())
         .withFaceLandmarks()
         .withFaceDescriptor();
@@ -143,33 +186,41 @@ export default function VerifyPage() {
       canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
       const capturedImage = canvas.toDataURL("image/jpeg");
 
-      // 4. Enviar a backend
+      // 4. Enviar a backend (sin imagen, solo resultado)
       const res = await api.post("/user/verify-face", {
         success: isMatch,
-        score: score,
-        image: capturedImage
+        score: score
       });
 
       if (isMatch) {
         setStatus("success");
-        setTimeout(() => router.push("/"), 3000);
+        const stored = localStorage.getItem("user");
+        if (stored) {
+          try {
+            const userData = JSON.parse(stored);
+            userData.is_verified = true;
+            userData.verification_badge = "blue";
+            localStorage.setItem("user", JSON.stringify(userData));
+          } catch (e) {}
+        }
+        setTimeout(() => router.push("/app?tab=profile"), 3000);
       }
 
     } catch (error) {
       console.error(error);
-      const backendMsg = error.response?.data?.error;
-      setStatus("error");
-      setErrorMessage(backendMsg || "Hubo un error en el proceso de verificación.");
+      if (error.message) {
+        setStatus("error");
+        setErrorMessage(error.message);
+      } else {
+        const backendMsg = error.response?.data?.error;
+        setStatus("error");
+        setErrorMessage(backendMsg || "Hubo un error en el proceso de verificación.");
+      }
     }
   };
 
   return (
     <div className="min-h-screen w-full flex bg-cuadralo-bgLight dark:bg-[#0f0518] overflow-hidden text-cuadralo-textLight dark:text-white transition-colors duration-500 relative">
-      <Script 
-        src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js" 
-        strategy="afterInteractive"
-        onLoad={() => setIsScriptLoaded(true)}
-      />
 
       {/* PANEL IZQUIERDO (Branding - Solo Escritorio) */}
       <div className="hidden lg:flex w-[45%] relative bg-black items-center justify-center p-16 overflow-hidden">
@@ -178,9 +229,9 @@ export default function VerifyPage() {
           <div className="absolute -bottom-[20%] -right-[10%] w-[600px] h-[600px] bg-cuadralo-pink/20 rounded-full blur-[120px] animate-pulse delay-1000" />
           
           <div className="relative z-10 w-full max-w-md">
-             <div className="w-48 h-12 relative mb-16">
-                 <Image src="/logo.svg" fill className="object-contain dark:invert-0 invert" alt="Cuadralo" priority />
-             </div>
+              <div className="w-48 h-12 relative mb-16">
+                  <img src="/isotipo.svg" className="w-full h-full object-contain" alt="Cuadralo" />
+              </div>
              
              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
                  <h1 className="text-5xl xl:text-6xl font-black text-white tracking-tighter mb-6 leading-[1.1]">

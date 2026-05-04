@@ -3,8 +3,15 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Heart, ChevronRight, Users, Star } from "lucide-react";
+import { useState, useEffect } from "react";
 
 export default function CtaSection() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem("token"));
+  }, []);
+
   return (
     <section className="py-20 bg-gradient-to-br from-[#0B0410] via-[#1a0a2e] to-[#0B0410] relative overflow-hidden">
       {/* Animated Background */}
@@ -55,20 +62,33 @@ export default function CtaSection() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/register"
-              className="group bg-gradient-to-r from-cuadralo-pink to-cuadralo-pinkDark text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:shadow-2xl hover:shadow-cuadralo-pink/25 transition-all duration-300 flex items-center justify-center gap-2"
-            >
-              <Heart size={20} className="fill-current" />
-              Registrarse Gratis
-              <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
-            </Link>
-            <Link
-              href="/login"
-              className="bg-white/5 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:bg-white/10 transition-all duration-300 border border-white/10"
-            >
-              Iniciar Sesión
-            </Link>
+            {isLoggedIn ? (
+              <Link
+                href="/app"
+                className="group bg-gradient-to-r from-cuadralo-pink to-cuadralo-pinkDark text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:shadow-2xl hover:shadow-cuadralo-pink/25 transition-all duration-300 flex items-center justify-center gap-2"
+              >
+                <Heart size={20} className="fill-current" />
+                Acceder a la app
+                <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/register"
+                  className="group bg-gradient-to-r from-cuadralo-pink to-cuadralo-pinkDark text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:shadow-2xl hover:shadow-cuadralo-pink/25 transition-all duration-300 flex items-center justify-center gap-2"
+                >
+                  <Heart size={20} className="fill-current" />
+                  Registrarse Gratis
+                  <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <Link
+                  href="/login"
+                  className="bg-white/5 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:bg-white/10 transition-all duration-300 border border-white/10"
+                >
+                  Iniciar Sesión
+                </Link>
+              </>
+            )}
           </div>
         </motion.div>
       </div>

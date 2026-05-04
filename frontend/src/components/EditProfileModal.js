@@ -118,8 +118,13 @@ export default function EditProfileModal({ user, onClose, onUpdate }) {
         const userStr = localStorage.getItem("user");
         if (userStr) {
             const userObj = JSON.parse(userStr);
+            const photoChanged = userObj.photo !== mainPhoto;
             userObj.photo = mainPhoto;
             userObj.photos = finalPhotos;
+            if (photoChanged && userObj.is_verified) {
+                userObj.is_verified = false;
+                userObj.verification_badge = "none";
+            }
             localStorage.setItem("user", JSON.stringify(userObj));
             window.dispatchEvent(new CustomEvent("user_updated", { detail: userObj }));
         }

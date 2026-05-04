@@ -175,16 +175,11 @@ function MainAppContent() {
         {renderView()}
       </div>
 
-      {!selectedChat && (
-          <BottomNav 
-            activeTab={activeTab} 
-            onTabChange={(tab) => {
-                setActiveTab(tab);
-                window.history.pushState(null, "", `/?tab=${tab}`);
-            }} 
-            chatBadge={chatBadge > 0 ? chatBadge : null} 
-          />
-      )}
+       {!selectedChat && (
+           <BottomNav 
+             chatBadge={chatBadge > 0 ? chatBadge : null} 
+           />
+       )}
 
       <AnimatePresence>
         {showFilters && <FilterModal onClose={() => setShowFilters(false)} />}

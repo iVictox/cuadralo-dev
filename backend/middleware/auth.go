@@ -6,11 +6,49 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 )
+
+type userCacheEntry struct {
+	role            string
+	isSuspended     bool
+	suspendedUntil  *time.Time
+	suspensionReason string
+	expiresAt       time.Time
+}
+
+var (
+	userCache = make(map[uint]userCacheEntry)
+	cacheMu   sync.RWMutex
+	cacheTTL  = 5 * time.Minute
+)
+
+func getCachedUser(userId uint) (userCacheEntry, bool) {
+	cacheMu.RLock()
+	defer cacheMu.RUnlock()
+	entry, ok := userCache[userId]
+	if ok && time.Now().Before(entry.expiresAt) {
+		return entry, true
+	}
+	return userCacheEntry{}, false
+}
+
+func setCachedUser(userId uint, entry userCacheEntry) {
+	entry.expiresAt = time.Now().Add(cacheTTL)
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	userCache[userId] = entry
+}
+
+func InvalidateUserCache(userId uint) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	delete(userCache, userId)
+}
 
 // Función unificada para garantizar la misma firma en toda la app
 func getJWTSecret() string {
@@ -64,8 +102,23 @@ func IsAuthenticated(c *fiber.Ctx) error {
 	userId := uint(userIdFloat)
 
 	var user models.User
-	if err := database.DB.Select("id, role, is_suspended, suspended_until, suspension_reason").First(&user, userId).Error; err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Usuario no encontrado o eliminado"})
+
+	if cached, ok := getCachedUser(userId); ok {
+		user.ID = userId
+		user.Role = cached.role
+		user.IsSuspended = cached.isSuspended
+		user.SuspendedUntil = cached.suspendedUntil
+		user.SuspensionReason = cached.suspensionReason
+	} else {
+		if err := database.DB.Select("id, role, is_suspended, suspended_until, suspension_reason").First(&user, userId).Error; err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Usuario no encontrado o eliminado"})
+		}
+		setCachedUser(userId, userCacheEntry{
+			role:            user.Role,
+			isSuspended:     user.IsSuspended,
+			suspendedUntil:  user.SuspendedUntil,
+			suspensionReason: user.SuspensionReason,
+		})
 	}
 
 	if user.IsSuspended {
@@ -74,6 +127,12 @@ func IsAuthenticated(c *fiber.Ctx) error {
 				"is_suspended":      false,
 				"suspended_until":   nil,
 				"suspension_reason": "",
+			})
+			setCachedUser(userId, userCacheEntry{
+				role:            user.Role,
+				isSuspended:     false,
+				suspendedUntil:  nil,
+				suspensionReason: "",
 			})
 		} else {
 			response := fiber.Map{

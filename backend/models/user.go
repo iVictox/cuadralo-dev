@@ -32,11 +32,11 @@ func (a *StringArray) Scan(value interface{}) error {
 }
 
 type User struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
+	ID        uint      `gorm:"primaryKey;index" json:"id"`
 	Name      string    `json:"name"`
-	Username  string    `gorm:"unique" json:"username"`
-	Email     string    `gorm:"unique" json:"email"`
-	GoogleID  string    `gorm:"unique" json:"google_id,omitempty"`
+	Username  string    `gorm:"uniqueIndex" json:"username"`
+	Email     string    `gorm:"uniqueIndex" json:"email"`
+	GoogleID  string    `gorm:"uniqueIndex" json:"google_id,omitempty"`
 	Password  string    `json:"-"`
 	BirthDate time.Time `json:"birth_date"`
 	Gender    string    `json:"gender"`
@@ -50,17 +50,17 @@ type User struct {
 
 	Preferences string `gorm:"type:text" json:"preferences"`
 
-	Interests     []Interest `gorm:"many2many:user_interests;" json:"-"`
+	Interests     []Interest `gorm:"many2many:user_interests;index" json:"-"`
 	InterestsList []string   `gorm:"-" json:"interests"`
 
-	FollowersCount int `gorm:"default:0" json:"followers_count"`
-	FollowingCount int `gorm:"default:0" json:"following_count"`
+	FollowersCount int `gorm:"default:0;index" json:"followers_count"`
+	FollowingCount int `gorm:"default:0;index" json:"following_count"`
 
-	IsSuspended      bool       `json:"is_suspended" gorm:"default:false"`
+	IsSuspended      bool       `json:"is_suspended" gorm:"default:false;index"`
 	SuspendedUntil   *time.Time `json:"suspended_until"`
 	SuspensionReason string     `json:"suspension_reason"`
 
-	Role             string `json:"role" gorm:"default:'user'"`
+	Role             string `json:"role" gorm:"default:'user';index"`
 	TwoFactorEnabled bool   `json:"two_factor_enabled" gorm:"default:false"`
 	TwoFactorSecret  string `json:"-"`
 
@@ -78,7 +78,7 @@ type User struct {
 	ClasicoCount     int       `json:"clasico_count" gorm:"default:0"`
 	EstelarCount     int       `json:"estelar_count" gorm:"default:0"`
 	DailyLikes       int       `json:"daily_likes" gorm:"default:0"`
-	RompehielosCount int       `json:"rompehielos_count" gorm:"default:0"` // Transformado a un campo real
+	RompehielosCount int       `json:"rompehielos_count" gorm:"default:0"`
 	LastLikeDate     time.Time `json:"last_like_date"`
 
 	IsFollowing    bool `gorm:"-" json:"is_following"`
@@ -87,7 +87,7 @@ type User struct {
 
 	SentNotifications []Notification `gorm:"-" json:"-"`
 
-	CreatedAt time.Time      `json:"created_at"`
+	CreatedAt time.Time      `json:"created_at" gorm:"index"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 }

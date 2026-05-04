@@ -25,9 +25,9 @@ func GetMe(c *fiber.Ctx) error {
 	user.FollowersCount = int(followersCount)
 	user.FollowingCount = int(followingCount)
 
-	user.InterestsList = []string{}
-	for _, i := range user.Interests {
-		user.InterestsList = append(user.InterestsList, i.Slug)
+	user.InterestsList = make([]string, len(user.Interests))
+	for i, interest := range user.Interests {
+		user.InterestsList[i] = interest.Slug
 	}
 
 	return c.JSON(user)
@@ -66,9 +66,15 @@ func UpdateMe(c *fiber.Ctx) error {
 	user.Bio = input.Bio
 
 	if input.Photos != nil {
+		oldPhoto := user.Photo
 		user.Photos = input.Photos
 		if len(input.Photos) > 0 {
 			user.Photo = input.Photos[0]
+		}
+		if user.IsVerified && oldPhoto != user.Photo {
+			user.IsVerified = false
+			user.VerificationBadge = "none"
+			user.LastVerificationAttempt = nil
 		}
 	}
 
@@ -85,11 +91,10 @@ func UpdateMe(c *fiber.Ctx) error {
 	}
 
 	if input.Interests != nil {
-		var newInterests []models.Interest
-
+		var interestIDs []uint
 		for _, slug := range input.Interests {
 			var interest models.Interest
-			result := database.DB.Where("slug = ?", slug).First(&interest)
+			result := database.DB.Select("id").Where("slug = ?", slug).First(&interest)
 
 			if result.RowsAffected == 0 {
 				interest = models.Interest{
@@ -100,9 +105,17 @@ func UpdateMe(c *fiber.Ctx) error {
 				database.DB.Create(&interest)
 			}
 
-			newInterests = append(newInterests, interest)
+			interestIDs = append(interestIDs, interest.ID)
 		}
-		database.DB.Model(&user).Association("Interests").Replace(newInterests)
+
+		if len(interestIDs) > 0 {
+			database.DB.Exec("DELETE FROM user_interests WHERE user_id = ?", userId)
+			for _, interestID := range interestIDs {
+				database.DB.Exec("INSERT INTO user_interests (user_id, interest_id) VALUES (?, ?) ON CONFLICT DO NOTHING", userId, interestID)
+			}
+		} else {
+			database.DB.Exec("DELETE FROM user_interests WHERE user_id = ?", userId)
+		}
 	}
 
 	database.DB.Preload("Interests").First(&user, userId)

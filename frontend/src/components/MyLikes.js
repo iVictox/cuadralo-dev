@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Heart, Loader2, Zap, Crown, Sparkles, MessageCircle, ArrowRight } from "lucide-react";
 import { api } from "@/utils/api";
 import { useToast } from "@/context/ToastContext";
-import PrimeModal from "@/components/PrimeModal"; 
+import VipModal from "@/components/VipModal"; 
 import FlashModal from "@/components/FlashModal"; 
 import ProfileDetailsModal from "@/components/ProfileDetailsModal";
 
@@ -17,7 +17,7 @@ export default function MyLikes({ onLoaded }) {
   
   const [view, setView] = useState("likes");
   
-  const [showPrime, setShowPrime] = useState(false);
+  const [showVip, setShowVip] = useState(false);
   const [showFlash, setShowFlash] = useState(false);
   const [flashInfo, setFlashInfo] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -186,7 +186,7 @@ export default function MyLikes({ onLoaded }) {
                             </div>
                         </div>
                         <button 
-                            onClick={() => setShowPrime(true)}
+                            onClick={() => setShowVip(true)}
                             className="z-10 px-5 py-3 bg-gradient-to-r from-yellow-400 to-amber-600 text-black font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-[0_5px_20px_rgba(234,179,8,0.4)] transition-all hover:scale-[1.03] active:scale-95"
                         >
                             Obtener Pase VIP
@@ -200,7 +200,7 @@ export default function MyLikes({ onLoaded }) {
                         key={user.id} 
                         className="relative aspect-[3/4] rounded-[2rem] overflow-hidden bg-cuadralo-cardLight dark:bg-cuadralo-cardDark group border border-black/5 dark:border-white/5 transition-all shadow-glass-light dark:shadow-glass-dark hover:shadow-[0_8px_30px_rgba(242,19,142,0.15)]"
                     >
-                        <div className="absolute inset-0 cursor-pointer" onClick={() => { if (user.locked) setShowPrime(true); else setSelectedUser(user); }}>
+                        <div className="absolute inset-0 cursor-pointer" onClick={() => { if (user.locked) setShowVip(true); else setSelectedUser(user); }}>
                             <img 
                                 src={user.img || "https://via.placeholder.com/300"} 
                                 alt="User" 
@@ -308,7 +308,7 @@ export default function MyLikes({ onLoaded }) {
       )}
 
       <AnimatePresence>
-        {showPrime && <PrimeModal onClose={() => setShowPrime(false)} />}
+        {showVip && <VipModal onClose={() => setShowVip(false)} />}
         {showFlash && <FlashModal onClose={() => { setShowFlash(false); fetchFlashInfo(); }} />}
         {selectedUser && <ProfileDetailsModal profile={selectedUser} onClose={() => setSelectedUser(null)} hideIcebreaker={true} />}
       </AnimatePresence>

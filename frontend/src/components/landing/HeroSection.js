@@ -4,8 +4,15 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Play, ChevronRight } from "lucide-react";
 import Image from "next/image";
+import { useState, useEffect } from "react";
 
 export default function HeroSection() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem("token"));
+  }, []);
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0B0410]">
       {/* Video Background with overlay */}
@@ -130,20 +137,33 @@ export default function HeroSection() {
               transition={{ duration: 0.8, delay: 0.5 }}
               className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start"
             >
-              <Link
-                href="/register"
-                className="group bg-gradient-to-r from-cuadralo-pink to-cuadralo-pinkDark text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:shadow-2xl hover:shadow-cuadralo-pink/25 transition-all duration-300 flex items-center justify-center gap-2"
-              >
-                <Play size={20} className="fill-current" />
-                Comenzar Ahora
-                <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link
-                href="/login"
-                className="bg-white/5 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:bg-white/10 transition-all duration-300 border border-white/10"
-              >
-                Iniciar Sesión
-              </Link>
+              {isLoggedIn ? (
+                <Link
+                  href="/app"
+                  className="group bg-gradient-to-r from-cuadralo-pink to-cuadralo-pinkDark text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:shadow-2xl hover:shadow-cuadralo-pink/25 transition-all duration-300 flex items-center justify-center gap-2"
+                >
+                  <Play size={20} className="fill-current" />
+                  Acceder a la app
+                  <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/register"
+                    className="group bg-gradient-to-r from-cuadralo-pink to-cuadralo-pinkDark text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:shadow-2xl hover:shadow-cuadralo-pink/25 transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    <Play size={20} className="fill-current" />
+                    Comenzar Ahora
+                    <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="bg-white/5 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:bg-white/10 transition-all duration-300 border border-white/10"
+                  >
+                    Iniciar Sesión
+                  </Link>
+                </>
+              )}
             </motion.div>
 
             {/* Social Proof */}

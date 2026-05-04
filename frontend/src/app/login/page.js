@@ -35,7 +35,7 @@ export default function LoginPage() {
         localStorage.setItem("token", response.token);
         localStorage.setItem("user", JSON.stringify(response.user));
 
-        router.push("/");
+        router.push("/app");
     } catch (err) {
         console.error("Error login:", err);
         // Check if user is suspended
@@ -60,7 +60,7 @@ export default function LoginPage() {
             });
             localStorage.setItem("token", response.token);
             localStorage.setItem("user", JSON.stringify(response.user));
-            router.push("/");
+            router.push("/app");
         } catch (err) {
             console.error("Error backend Google:", err);
             // Si el usuario no está registrado, redirigir al registro con los datos de Google
@@ -101,7 +101,7 @@ export default function LoginPage() {
               });
               localStorage.setItem("token", apiResponse.token);
               localStorage.setItem("user", JSON.stringify(apiResponse.user));
-              router.push("/");
+              router.push("/app");
           } catch (err) {
               setError("Esta cuenta de Apple no está registrada en Cuadralo.");
               setIsLoading(false);

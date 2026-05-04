@@ -7,8 +7,7 @@ import Image from "next/image";
 import { api } from "@/utils/api";
 import MatchModal from "@/components/MatchModal";
 import ProfileDetailsModal from "@/components/ProfileDetailsModal";
-import PrimeModal from "@/components/PrimeModal";
-import BoostModal from "@/components/BoostModal";
+import VipModal from "@/components/VipModal";
 import FlashModal from "@/components/FlashModal";
 import IcebreakerModal from "@/components/IcebreakerModal";
 import { getInterestInfo } from "@/utils/interests";
@@ -22,7 +21,7 @@ export default function CardStack({ onOpenFilters, onLoaded }) {
     const [selectedProfile, setSelectedProfile] = useState(null);
     const [matchData, setMatchData] = useState(null);
 
-    const [showPrime, setShowPrime] = useState(false);
+    const [showVip, setShowVip] = useState(false);
     const [showBoost, setShowBoost] = useState(false);
     const [showFlash, setShowFlash] = useState(false);
 
@@ -151,7 +150,7 @@ const fetchMyData = async () => {
             }
         } catch (error) {
             if (error.needs_prime) {
-                setShowPrime(true);
+                setShowVip(true);
             } else {
                 console.error(error);
             }
@@ -188,7 +187,7 @@ const fetchMyData = async () => {
 
     const handleRewind = async () => {
         if (!isPrime) {
-            setShowPrime(true);
+            setShowVip(true);
             return;
         }
         if (history.length === 0) return;
@@ -199,7 +198,7 @@ const fetchMyData = async () => {
             setHistory(prev => prev.slice(0, -1));
             setCards(prev => [...prev, lastCard]);
         } catch (error) {
-            if (error.needs_prime) setShowPrime(true);
+            if (error.needs_prime) setShowVip(true);
         }
     };
 
@@ -380,10 +379,10 @@ const fetchMyData = async () => {
                 {selectedProfile && <ProfileDetailsModal profile={selectedProfile} onClose={() => setSelectedProfile(null)} />}
             </AnimatePresence>
             <AnimatePresence>
-                {showPrime && <PrimeModal onClose={() => setShowPrime(false)} />}
+                {showVip && <VipModal onClose={() => setShowVip(false)} />}
             </AnimatePresence>
             <AnimatePresence>
-                {showBoost && <BoostModal onClose={() => setShowBoost(false)} />}
+                {showBoost && <FlashModal onClose={() => { setShowBoost(false); fetchFlashInfo(); }} />}
             </AnimatePresence>
             <AnimatePresence>
                 {showFlash && <FlashModal onClose={() => { setShowFlash(false); fetchFlashInfo(); }} />}
@@ -454,7 +453,7 @@ function TinderCard({ data, isFront, onSwipe, onInfo, swipeDir }) {
                 rotate: swipeDir === "right" ? 30 : -30,
                 transition: { duration: 0.4, ease: "easeOut" }
             }}
-            className={`absolute w-[95%] sm:w-[95%] max-w-[480px] h-[88%] sm:h-[92%] lg:h-[90%] bg-cuadralo-cardDark dark:bg-[#0a0612] rounded-3xl sm:rounded-[2.5rem] overflow-hidden shadow-xl ${!isFront && 'pointer-events-none'} cursor-grab active:cursor-grabbing`}
+            className={`absolute w-[95%] sm:w-[95%] max-w-[480px] h-[88%] sm:h-[92%] lg:h-[90%] bg-cuadralo-cardDark dark:bg-[#0B0410] rounded-3xl sm:rounded-[2.5rem] overflow-hidden shadow-xl ${!isFront && 'pointer-events-none'} cursor-grab active:cursor-grabbing`}
         >
             {/* Imagen principal */}
             <img 

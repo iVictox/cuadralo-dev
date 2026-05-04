@@ -24,17 +24,20 @@ export default function AppLayout({ children }) {
         return;
       }
 
-      try {
-        const res = await api.get('/auth/verify');
-        if (!res || !res.valid) {
+       try {
+        const res = await api.get('/me');
+        if (!res || !res.id) {
           localStorage.removeItem('token');
+          localStorage.removeItem('user');
           router.push('/login');
           return;
         }
+        localStorage.setItem('user', JSON.stringify(res));
         setIsAuthenticated(true);
       } catch (error) {
         console.error('Auth check failed:', error);
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
         router.push('/login');
       }
     };
@@ -57,7 +60,7 @@ export default function AppLayout({ children }) {
           <SocketProvider>
             <div className="min-h-screen bg-cuadralo-bgLight dark:bg-[#0B0410]">
               <Navbar />
-              <main className="pt-16 md:pt-0 md:pl-20 pb-16 md:pb-0">
+              <main className="pt-16 md:pt-0 pb-16 md:pb-0">
                 {children}
               </main>
               <BottomNav />

@@ -18,7 +18,7 @@ type VerifyFaceRequest struct {
 
 // VerifyFace procesa el resultado del reconocimiento facial ejecutado en el cliente
 func VerifyFace(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(uint)
+	userID := uint(c.Locals("userId").(float64))
 
 	var req VerifyFaceRequest
 	if err := c.BodyParser(&req); err != nil {

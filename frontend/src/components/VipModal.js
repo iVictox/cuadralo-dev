@@ -6,7 +6,7 @@ import { X, Crown, Eye, Infinity as InfinityIcon, RotateCcw, Zap, MessageCircle,
 import CheckoutModal from "@/components/CheckoutModal"; 
 import { api } from "@/utils/api";
 
-export default function PrimeModal({ onClose }) {
+export default function VipModal({ onClose }) {
   const [showCheckout, setShowCheckout] = useState(false);
   const [vipPrice, setVipPrice] = useState(null); // Empezamos en null para mostrar el loader
   const [loading, setLoading] = useState(true);

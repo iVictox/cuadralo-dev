@@ -164,8 +164,10 @@ func main() {
 	// Configuración CORS - MODIFICADO SOLO PARA LOCALHOST
 	app.Use(cors.New(cors.Config{
 		AllowCredentials: true,
-		AllowOrigins:     "http://localhost:3000,http://127.0.0.1:3000",
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, Upgrade, Connection",
+		AllowOrigins:     "http://localhost:3000",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With, Cache-Control",
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
+		MaxAge:           86400,
 	}))
 
 	// Middleware para WebSocket Upgrade
